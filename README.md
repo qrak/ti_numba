@@ -1,10 +1,9 @@
 # High-performance technical indicators using Numba JIT compilation
 
+![Plot Example](https://raw.githubusercontent.com/qrak/ti_numba/master/examples/plot.png)
 ![Python](https://img.shields.io/badge/python-3.9+-blue.svg)
 ![Numba](https://img.shields.io/badge/numba-0.60.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Plot Example](https://raw.githubusercontent.com/qrak/ti_numba/master/examples/plot.png)
-
 ## Features
 
 - Multiple indicator categories:
