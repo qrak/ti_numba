@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ti_numba"
+version = "0.1.0"
+description = "High-performance technical indicators library using Numba"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT License"}
+authors = [
+    {name = "qrak", email = ""}
+]
+keywords = ["trading", "technical-analysis", "indicators", "numba", "finance"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
+dependencies = [
+    "pandas==2.2.1",
+    "numpy~=1.26.4",
+    "numba==0.60.0",
+    "ccxt==4.4.28",
+    "matplotlib==3.8.3",
+]
+
+[project.urls]
+Homepage = "https://github.com/qrak/ti_numba"
+Repository = "https://github.com/qrak/ti_numba.git"
+"Bug Tracker" = "https://github.com/qrak/ti_numba/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["ti_numba*"]
