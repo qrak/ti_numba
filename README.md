@@ -126,10 +126,6 @@ mfi = indicators.vol.mfi()
 - Case-insensitive column matching allows for flexible data input
 - Timestamp column in NumPy arrays is automatically detected and handled
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ### Momentum Indicators
 
 - **RSI (Relative Strength Index):** Measures the speed and change of price movements, typically used to identify overbought or oversold conditions.
@@ -215,4 +211,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **TWAP (Time Weighted Average Price):** A trading algorithm that breaks up a large order and releases smaller portions of the order to the market over a specified time period.
 
 
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
