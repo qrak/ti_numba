@@ -17,12 +17,6 @@
     - Volatility Indicators
     - Volume Indicators
 
-## Installation
-
-```
-pip install ti_numba
-```
-
 ## Requirements
 
 - Python >= 3.9
