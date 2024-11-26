@@ -1,9 +1,9 @@
+# High-performance technical indicators using Numba JIT compilation
 
 ![Python](https://img.shields.io/badge/python-3.9+-blue.svg)
 ![Numba](https://img.shields.io/badge/numba-0.60.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-# High-performance technical indicators using Numba JIT compilation
 ## Features
 
 - Multiple indicator categories:
