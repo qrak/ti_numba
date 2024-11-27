@@ -25,6 +25,7 @@
 - numba == 0.60.0
 - ccxt == 4.4.28
 - matplotlib == 3.8.3
+- scipy == 1.14.1
 
 ## Usage with numpy data
 
@@ -121,7 +122,7 @@ mfi = indicators.vol.mfi()
 
 ## Notes
 
-- First calculation includes Numba compilation time
+- First calculation includes Numba compilation time. Please run compile.py first.
 - Subsequent calculations are significantly faster due to Numba's caching
 - Case-insensitive column matching allows for flexible data input
 - Timestamp column in NumPy arrays is automatically detected and handled
