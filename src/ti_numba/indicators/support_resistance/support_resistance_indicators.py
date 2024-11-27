@@ -131,8 +131,10 @@ def fibonacci_retracement_numba(length, high, low):
     return retracement_values
 
 @njit(cache=True)
-def floating_levels_numba(high, low, close, length, multiplier, lookback, level_up, level_down, mamode='rma'):
-    supertrend, _ = supertrend_numba(high, low, close, length, multiplier, mamode)
+def floating_levels_numba(high: np.ndarray, low: np.ndarray, close: np.ndarray,
+                         length: int, multiplier: float, lookback: int,
+                         level_up: float, level_down: float):
+    supertrend, _ = supertrend_numba(high, low, close, length, multiplier)
     n = len(supertrend)
     flu = np.empty(n, dtype=np.float64)
     fld = np.empty(n, dtype=np.float64)

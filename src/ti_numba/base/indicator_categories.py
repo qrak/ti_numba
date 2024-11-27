@@ -389,12 +389,11 @@ class SupportResistanceIndicators(IndicatorCategory['SupportResistanceIndicators
 
     def floating_levels(
             self,
-            lookback: int,
-            level_up: float,
-            level_down: float,
+            lookback: int = 20,
+            level_up: float = 50.0,
+            level_down: float = 50.0,
             length: int = 7,
             multiplier: float = 3.0,
-            mamode: str = 'rma'
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         return self._base.calculate_indicator(
             floating_levels_numba,
@@ -406,7 +405,7 @@ class SupportResistanceIndicators(IndicatorCategory['SupportResistanceIndicators
             lookback,
             level_up,
             level_down,
-            mamode
+            required_length=lookback
         )
 
 
@@ -421,16 +420,15 @@ class TrendIndicators(IndicatorCategory['TrendIndicators']):
             required_length=length
         )
 
-    def supertrend(self, length: int = 7, multiplier: float = 3.0, mamode: str = 'rma') -> Tuple[
-        np.ndarray, np.ndarray, np.ndarray]:
+    def supertrend(self, length: int = 7, multiplier: float = 3.0) -> Tuple[
+        np.ndarray, np.ndarray]:
         return self._base.calculate_indicator(
             supertrend_numba,
             self.high,
             self.low,
             self.close,
             length,
-            multiplier,
-            mamode
+            multiplier
         )
 
     def ichimoku_cloud(
