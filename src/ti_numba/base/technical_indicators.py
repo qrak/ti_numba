@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, List
 import numpy as np
 import pandas as pd
 from .indicator_base import IndicatorBase
@@ -43,5 +43,5 @@ class TechnicalIndicators:
     def volume(self) -> np.ndarray:
         return self._base.volume
 
-    def get_data(self, data: Union[pd.DataFrame, np.ndarray]) -> None:
+    def get_data(self, data: Union[pd.DataFrame, np.ndarray, List[List[Union[int, float]]]]) -> None:
         self._base.get_data(data)
