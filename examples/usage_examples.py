@@ -1,3 +1,4 @@
+import timeit
 from typing import Dict, Optional, Tuple, Union
 
 import ccxt
@@ -125,6 +126,63 @@ class IndicatorAnalyzer:
         plt.show()
 
 
+class DataHandlingBenchmark:
+    def __init__(self) -> None:
+        self.sample_data_small = self._generate_sample_data(1000)
+        self.sample_data_medium = self._generate_sample_data(10000)
+        self.sample_data_large = self._generate_sample_data(100000)
+
+    def _generate_sample_data(self, size: int) -> np.ndarray:
+        return np.column_stack((
+            np.random.uniform(1, 100, size),  # open
+            np.random.uniform(1, 100, size),  # high
+            np.random.uniform(1, 100, size),  # low
+            np.random.uniform(1, 100, size),  # close
+            np.random.uniform(1000, 10000, size)  # volume
+        ))
+
+    def benchmark_numpy_handling(self, data: np.ndarray) -> float:
+        start_time = timeit.default_timer()
+        indicators = TechnicalIndicators()
+        indicators.get_data(data)
+        _ = indicators.trend.adx()
+        return timeit.default_timer() - start_time
+
+    def benchmark_list_handling(self, data: np.ndarray) -> float:
+        start_time = timeit.default_timer()
+        data_list = data.tolist()
+        indicators = TechnicalIndicators()
+        indicators.get_data(data_list)
+        _ = indicators.trend.adx()
+        return timeit.default_timer() - start_time
+
+    def benchmark_dataframe_handling(self, data: np.ndarray) -> float:
+        start_time = timeit.default_timer()
+        df = pd.DataFrame(data, columns=['open', 'high', 'low', 'close', 'volume'])
+        indicators = TechnicalIndicators()
+        indicators.get_data(df)
+        _ = indicators.trend.adx()
+        return timeit.default_timer() - start_time
+
+    def run_benchmarks(self) -> None:
+        datasets = {
+            'Small (1K rows)': self.sample_data_small,
+            'Medium (10K rows)': self.sample_data_medium,
+            'Large (100K rows)': self.sample_data_large
+        }
+
+        for dataset_name, dataset in datasets.items():
+            print(f"\nBenchmarking {dataset_name}:")
+            numpy_time = self.benchmark_numpy_handling(dataset)
+            list_time = self.benchmark_list_handling(dataset)
+            df_time = self.benchmark_dataframe_handling(dataset)
+
+            print(f"NumPy handling time: {numpy_time:.4f} seconds")
+            print(f"List handling time: {list_time:.4f} seconds")
+            print(f"DataFrame handling time: {df_time:.4f} seconds")
+
+
+
 def main() -> None:
     fetcher = MarketDataFetcher()
     df = fetcher.fetch_ohlcv(
@@ -138,6 +196,9 @@ def main() -> None:
         analyzer = IndicatorAnalyzer(df)
         indicators_data = analyzer.calculate_indicators()
         analyzer.plot_indicators(indicators_data)
+
+    benchmark = DataHandlingBenchmark()
+    benchmark.run_benchmarks()
 
 
 if __name__ == "__main__":
