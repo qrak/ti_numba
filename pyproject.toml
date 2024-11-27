@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT License"}
 authors = [
-    {name = "qrak", email = ""}
+    {name = "qrak", email = "donqrakko@gmail.com"}
 ]
 keywords = ["trading", "technical-analysis", "indicators", "numba", "finance"]
 classifiers = [
