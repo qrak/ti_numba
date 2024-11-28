@@ -35,6 +35,9 @@ class IndicatorBase:
         else:
             raise TypeError("Data must be a Pandas DataFrame, NumPy array, or List")
 
+    def _assign_data(self, data: np.ndarray) -> None:
+        self.open, self.high, self.low, self.close, self.volume = data.T
+
     def calculate_indicator(self, func: Callable, *args: Any, required_length: int = 0, **kwargs: Any) -> Any:
         if not len(self.close):
             raise ValueError("Data not initialized. Call get_data() first.")
@@ -61,7 +64,7 @@ class IndicatorBase:
 
         if self.timestamp is not None:
             data['timestamp'] = self.timestamp
-        data['open'] = self.open.ravel()  # Ensure 1D array
+        data['open'] = self.open.ravel()
         data['high'] = self.high.ravel()
         data['low'] = self.low.ravel()
         data['close'] = self.close.ravel()
@@ -118,11 +121,7 @@ class IndicatorBase:
         else:
             raise ValueError(f"Each list must contain {expected_cols} or {expected_cols_with_timestamp} elements")
 
-        self.open = data_slice[:, 0]
-        self.high = data_slice[:, 1]
-        self.low = data_slice[:, 2]
-        self.close = data_slice[:, 3]
-        self.volume = data_slice[:, 4]
+        self._assign_data(data_slice)
 
     def _handle_dataframe(self, dataframe: pd.DataFrame) -> None:
         col_mapping = {col.lower(): col for col in dataframe.columns}
@@ -130,17 +129,22 @@ class IndicatorBase:
         timestamp_cols = {'timestamp', 'date', 'datetime', 'time'}
 
         if missing_cols := expected_cols - set(col_mapping.keys()):
-            raise ValueError(f"Missing columns in DataFrame: {missing_cols}")
+            available_cols = ', '.join(col_mapping.keys())
+            raise ValueError(f"Missing columns in DataFrame: {missing_cols}. Available columns: {available_cols}")
 
-        arrays = np.column_stack([
-            dataframe[col_mapping[col]].to_numpy(dtype=np.float64).reshape(-1)
-            for col in ['open', 'high', 'low', 'close', 'volume']
-        ])
+        try:
+            arrays = np.column_stack([
+                dataframe[col_mapping[col]].to_numpy(dtype=np.float64).reshape(-1)
+                for col in ['open', 'high', 'low', 'close', 'volume']
+            ])
 
-        self.open, self.high, self.low, self.close, self.volume = arrays.T
+            self._assign_data(arrays)
 
-        if timestamp_col := next((col_mapping[col] for col in timestamp_cols if col in col_mapping), None):
-            self.timestamp = pd.to_datetime(dataframe[timestamp_col]).to_numpy()
+            if timestamp_col := next((col_mapping[col] for col in timestamp_cols if col in col_mapping), None):
+                self.timestamp = pd.to_datetime(dataframe[timestamp_col]).to_numpy()
+
+        except ValueError as e:
+            raise ValueError(f"Error converting DataFrame columns to numeric values: {str(e)}")
 
     def _handle_numpy_array(self, array: np.ndarray) -> None:
         if array.ndim != 2:
@@ -158,12 +162,7 @@ class IndicatorBase:
         else:
             raise ValueError(f"NumPy array must have {expected_cols} or {expected_cols + 1} columns")
 
-        self.open = data[:, 0].reshape(-1)
-        self.high = data[:, 1].reshape(-1)
-        self.low = data[:, 2].reshape(-1)
-        self.close = data[:, 3].reshape(-1)
-        self.volume = data[:, 4].reshape(-1)
-
+        self._assign_data(data)
 
 class IndicatorCategory(Generic[T]):
     def __init__(self, base: IndicatorBase) -> None:
