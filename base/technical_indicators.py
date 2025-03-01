@@ -1,13 +1,14 @@
 from typing import Union, List
+
 import numpy as np
 import pandas as pd
+
 from .indicator_base import IndicatorBase
 from .indicator_categories import (
     MomentumIndicators, OverlapIndicators, PriceTransformIndicators,
     SentimentIndicators, StatisticalIndicators, SupportResistanceIndicators,
     TrendIndicators, VolatilityIndicators, VolumeIndicators
 )
-
 
 
 class TechnicalIndicators:

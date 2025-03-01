@@ -1,7 +1,7 @@
 import numpy as np
+from indicators.overlap import ema_numba
 from numba import njit
 
-from ..overlap import ema_numba
 
 @njit(cache=True)
 def cci_numba(high, low, close, length=14, c=0.015):

@@ -1,15 +1,9 @@
-import os
-import sys
-
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0, project_root)
-
 from typing import Dict, Any
 import numpy as np
 import timeit
 from datetime import datetime
 
-from ti_numba.base import IndicatorBase, MomentumIndicators, OverlapIndicators, PriceTransformIndicators, \
+from base import IndicatorBase, MomentumIndicators, OverlapIndicators, PriceTransformIndicators, \
     SentimentIndicators, StatisticalIndicators, SupportResistanceIndicators, TrendIndicators, VolatilityIndicators, \
     VolumeIndicators
 

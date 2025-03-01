@@ -2,18 +2,16 @@ from typing import TypeVar, Tuple
 
 import numpy as np
 
-
-from ..indicators.momentum import *
-from ..indicators.overlap import *
-from ..indicators.price import *
-from ..indicators.sentiment import *
-from ..indicators.statistical import *
-from ..indicators.support_resistance import *
-from ..indicators.trend import *
-from ..indicators.volatility import *
-from ..indicators.volume import *
-
-from .indicator_base import IndicatorCategory
+from base import IndicatorCategory
+from indicators.momentum import *
+from indicators.overlap import *
+from indicators.price import *
+from indicators.sentiment import *
+from indicators.statistical import *
+from indicators.support_resistance import *
+from indicators.trend import *
+from indicators.volatility import *
+from indicators.volume import *
 
 T = TypeVar('T')
 
@@ -142,8 +140,7 @@ class MomentumIndicators(IndicatorCategory['MomentumIndicators']):
             required_length=window
         )
 
-    def kst(
-            self,
+    def kst(self,
             roc1_length: int = 5,
             roc2_length: int = 10,
             roc3_length: int = 15,

@@ -1,6 +1,6 @@
 # High-performance technical indicators using Numba JIT compilation
 
-![Plot Example](https://raw.githubusercontent.com/qrak/ti_numba/master/examples/plot.png)
+![Plot Example](https://raw.githubusercontent.com/qrak/ti_numba/master/plot.png)
 ![Python](https://img.shields.io/badge/python-3.9+-blue.svg)
 ![Numba](https://img.shields.io/badge/numba-0.60.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
@@ -17,21 +17,11 @@
     - Volatility Indicators
     - Volume Indicators
 
-## Requirements
-
-- Python >= 3.9
-- pandas == 2.2.1
-- numpy ~= 1.26.4
-- numba == 0.60.0
-- ccxt == 4.4.28
-- matplotlib == 3.8.3
-- scipy == 1.14.1
-
 ## Usage with numpy data
 
 ```python
 import numpy as np
-from src.ti_numba.base import TechnicalIndicators
+from base import TechnicalIndicators
 
 indicators = TechnicalIndicators(measure_time=True)
 
@@ -52,7 +42,7 @@ bb = indicators.volatility.bollinger_bands()
 
 ```python
 import pandas as pd
-from src.ti_numba.base import TechnicalIndicators
+from base import TechnicalIndicators
 
 df = pd.DataFrame({
     'Open': [10.0, 11.0, 12.0],
@@ -74,7 +64,7 @@ vwap = indicators.vol.rolling_vwap()
 
 ```python
 import numpy as np
-from src.ti_numba.base import TechnicalIndicators
+from base import TechnicalIndicators
 from datetime import datetime, timedelta
 
 dates = [datetime.now() + timedelta(days=x) for x in range(3)]
@@ -139,6 +129,10 @@ mfi = indicators.vol.mfi()
 - **RMI (Relative Momentum Index):** A variation of RSI that uses momentum instead of price change.
 - **PPO (Percentage Price Oscillator):** Similar to MACD, but expressed as a percentage.
 - **Coppock Curve:** A long-term price momentum indicator used primarily to identify major bottoms in the stock market.
+- **Detect RSI Divergence:** Identifies potential divergences between RSI and price movements.
+- **Relative Strength Index:** Compares the strength of a security to a benchmark index.
+- **KST (Know Sure Thing):** A momentum oscillator based on the smoothed rate of change of four different time frames.
+- **UO (Ultimate Oscillator):** A momentum oscillator that captures momentum across three different time frames.
 
 ### Overlap Indicators
 
@@ -210,7 +204,7 @@ mfi = indicators.vol.mfi()
 - **Volume Profile:** Displays trading activity over a specified time period at specified price levels.
 - **Rolling VWAP (Volume Weighted Average Price):** Provides the average price a security has traded at throughout the day, based on both volume and price.
 - **TWAP (Time Weighted Average Price):** A trading algorithm that breaks up a large order and releases smaller portions of the order to the market over a specified time period.
-
+- **Average Quote Volume:** Measures the average volume of quotes over a specified window size.
 
 ## License
 
