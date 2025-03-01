@@ -1,11 +1,15 @@
 from typing import Dict, Any
+import os
 import numpy as np
 import timeit
 from datetime import datetime
 
-from src.ti_numba.base import MomentumIndicators, OverlapIndicators, PriceTransformIndicators, \
+# Disable Numba caching to force recompilation without using cached versions
+os.environ["NUMBA_DISABLE_FUNCTION_CACHING"] = "1"
+
+from ti_numba.base import IndicatorBase, MomentumIndicators, OverlapIndicators, PriceTransformIndicators, \
     SentimentIndicators, StatisticalIndicators, SupportResistanceIndicators, TrendIndicators, VolatilityIndicators, \
-    VolumeIndicators, IndicatorBase
+    VolumeIndicators
 
 
 class DataGenerator:
@@ -38,9 +42,10 @@ class IndicatorCompiler:
         self.indicators = self._initialize_indicators()
 
     def _initialize_indicators(self) -> Dict[str, Any]:
+        overlap = OverlapIndicators(self.base)
         return {
-            "momentum": MomentumIndicators(self.base),
-            "overlap": OverlapIndicators(self.base),
+            "overlap": overlap,
+            "momentum": MomentumIndicators(self.base, overlap),
             "price_transform": PriceTransformIndicators(self.base),
             "sentiment": SentimentIndicators(self.base),
             "statistical": StatisticalIndicators(self.base),

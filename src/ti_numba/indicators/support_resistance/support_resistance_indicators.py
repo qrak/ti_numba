@@ -1,6 +1,6 @@
 from numba import njit
 import numpy as np
-from src.ti_numba.indicators.trend import supertrend_numba
+from ..trend import supertrend_numba
 
 
 @njit(cache=True)

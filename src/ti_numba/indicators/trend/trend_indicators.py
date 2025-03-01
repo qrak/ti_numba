@@ -3,8 +3,8 @@ from typing import Tuple
 import numpy as np
 from numba import njit
 
-from src.ti_numba.indicators.overlap import ema_numba
-from src.ti_numba.indicators.volatility import atr_numba
+from ..overlap import ema_numba
+from ..volatility import atr_numba
 
 
 @njit(cache=True)

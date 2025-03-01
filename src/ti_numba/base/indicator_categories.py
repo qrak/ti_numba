@@ -2,21 +2,27 @@ from typing import TypeVar, Tuple
 
 import numpy as np
 
-from src.ti_numba.base import IndicatorCategory
-from src.ti_numba.indicators.momentum import *
-from src.ti_numba.indicators.overlap import *
-from src.ti_numba.indicators.price_transform import *
-from src.ti_numba.indicators.sentiment import *
-from src.ti_numba.indicators.statistical import *
-from src.ti_numba.indicators.support_resistance import *
-from src.ti_numba.indicators.trend import *
-from src.ti_numba.indicators.volatility import *
-from src.ti_numba.indicators.volume import *
+
+from ..indicators.momentum import *
+from ..indicators.overlap import *
+from ..indicators.price import *
+from ..indicators.sentiment import *
+from ..indicators.statistical import *
+from ..indicators.support_resistance import *
+from ..indicators.trend import *
+from ..indicators.volatility import *
+from ..indicators.volume import *
+
+from .indicator_base import IndicatorCategory
 
 T = TypeVar('T')
 
 
 class MomentumIndicators(IndicatorCategory['MomentumIndicators']):
+    def __init__(self, base, overlap_indicators):
+        super().__init__(base)
+        self.overlap = overlap_indicators
+
     def rsi(self, length: int = 14) -> np.ndarray:
         return self._base.calculate_indicator(
             rsi_numba,
@@ -119,6 +125,61 @@ class MomentumIndicators(IndicatorCategory['MomentumIndicators']):
             wma_length
         )
 
+    def detect_rsi_divergence(self, rsi_values: np.ndarray, length: int=14) -> np.ndarray:
+        return self._base.calculate_indicator(
+            detect_rsi_divergence,
+            self.close,
+            rsi_values,
+            length,
+            required_length=length)
+
+    def relative_strength_index(self, benchmark_close: np.ndarray, window: int = 14) -> np.ndarray:
+        return self._base.calculate_indicator(
+            calculate_relative_strength_numba,
+            self.close,
+            benchmark_close,
+            window,
+            required_length=window
+        )
+
+    def kst(
+            self,
+            roc1_length: int = 5,
+            roc2_length: int = 10,
+            roc3_length: int = 15,
+            roc4_length: int = 20,
+            sma1_length: int = 3,
+            sma2_length: int = 5,
+            sma3_length: int = 7,
+            sma4_length: int = 9
+        ) -> np.ndarray:
+
+        roc1 = self.roc(length=roc1_length)
+        roc2 = self.roc(length=roc2_length)
+        roc3 = self.roc(length=roc3_length)
+        roc4 = self.roc(length=roc4_length)
+
+        rcma1 = self.overlap.sma(data_series=roc1, length=sma1_length)
+        rcma2 = self.overlap.sma(data_series=roc2, length=sma2_length)
+        rcma3 = self.overlap.sma(data_series=roc3, length=sma3_length)
+        rcma4 = self.overlap.sma(data_series=roc4, length=sma4_length)
+
+        return rcma1 * 1 + rcma2 * 2 + rcma3 * 3 + rcma4 * 4
+
+    def uo(self, fast=7, medium=14, slow=28, fast_w=4.0, medium_w=2.0, slow_w=1.0, drift=1) -> np.ndarray:
+        return self._base.calculate_indicator(
+            uo_numba,
+            self.high,
+            self.low,
+            self.close,
+            fast,
+            medium,
+            slow,
+            fast_w,
+            medium_w,
+            slow_w,
+            drift,
+            required_length=slow)
 
 class OverlapIndicators(IndicatorCategory['OverlapIndicators']):
     def ema(self, data_series: np.ndarray, length: int = 10) -> np.ndarray:
@@ -276,7 +337,8 @@ class StatisticalIndicators(IndicatorCategory['StatisticalIndicators']):
         return self._base.calculate_indicator(
             hurst_numba,
             self.close,
-            max_lag
+            max_lag,
+            required_length=max_lag + 2
         )
 
     def linreg(self, length: int = 14, r: bool = False) -> np.ndarray:
@@ -540,6 +602,16 @@ class VolatilityIndicators(IndicatorCategory['VolatilityIndicators']):
 
 
 class VolumeIndicators(IndicatorCategory['VolumeIndicators']):
+    def cci(self, length: int = 14, c: float = 0.015) -> np.ndarray:
+        return self._base.calculate_indicator(
+            cci_numba,
+            self.high,
+            self.low,
+            self.close,
+            length,
+            c,
+            required_length=length)
+
     def mfi(self, length: int = 14, drift: int = 1) -> np.ndarray:
         return self._base.calculate_indicator(
             mfi_numba,
@@ -642,4 +714,12 @@ class VolumeIndicators(IndicatorCategory['VolumeIndicators']):
             self.close,
             length,
             required_length=length
+        )
+
+    def average_quote_volume(self, window_size=14):
+        return self._base.calculate_indicator(
+            average_quote_volume_numba,
+            self.close,
+            self.volume, window_size,
+            required_length=window_size
         )

@@ -221,32 +221,54 @@ def entropy_numba(close, length=10, base=2.0):
     return entropy
 
 @njit(cache=True)
-def hurst_numba(ts, max_lag: int=20):
+def hurst_numba(ts: np.ndarray, max_lag: int = 20) -> np.ndarray:
     n = len(ts)
-    if n < max_lag + 2:
-        raise ValueError("Time series is too short to calculate the Hurst exponent for the given max_lag")
+    hurst_values = np.full(n, np.nan, dtype=np.float64)
+    
+    # Start from index where we have enough data
+    for i in range(max_lag + 2, n):
+        # Use expanding window up to current position
+        window = ts[:i+1]
+        lags = np.arange(2, max_lag)
+        tau = np.zeros(len(lags))
 
-    lags = np.arange(2, max_lag)
-    tau = np.zeros(len(lags))
+        # Calculate tau for each lag
+        for j, lag in enumerate(lags):
+            sum_diff_sq = 0.0
+            count = 0
+            for idx in range(lag, len(window)):
+                diff = window[idx] - window[idx - lag]
+                sum_diff_sq += diff * diff
+                count += 1
+            if count > 0:
+                tau[j] = np.sqrt(sum_diff_sq / count)
+            else:
+                tau[j] = 0.0
 
-    for j, lag in enumerate(lags):
-        sum_diff_sq = 0.0
-        for i in range(lag, n):
-            diff = ts[i] - ts[i - lag]
-            sum_diff_sq += diff * diff
-        tau[j] = np.sqrt(sum_diff_sq / (n - lag))
+        # Filter out zero values
+        non_zero_tau = tau[tau > 0]
+        if len(non_zero_tau) < 2:
+            continue  # Skip calculation if not enough data
 
-    non_zero_tau = tau[tau > 0]
-    if len(non_zero_tau) == 0:
-        raise ValueError("All tau values are zero; cannot calculate the Hurst exponent")
+        # Calculate slope using valid values
+        log_lags = np.log(lags[tau > 0])
+        log_tau = np.log(non_zero_tau)
+        
+        # Linear regression using method of moments
+        n_points = len(log_lags)
+        sum_xy = np.sum(log_lags * log_tau)
+        sum_x = np.sum(log_lags)
+        sum_y = np.sum(log_tau)
+        sum_x2 = np.sum(log_lags ** 2)
+        
+        denominator = n_points * sum_x2 - sum_x ** 2
+        if denominator == 0:
+            continue
+            
+        slope = (n_points * sum_xy - sum_x * sum_y) / denominator
+        hurst_values[i] = slope
 
-    log_lags = np.log(lags)
-    log_tau = np.log(non_zero_tau)
-
-    slope = (len(log_lags) * np.sum(log_lags * log_tau) - np.sum(log_lags) * np.sum(log_tau)) / \
-            (len(log_lags) * np.sum(log_lags ** 2) - np.sum(log_lags) ** 2)
-
-    return slope
+    return hurst_values
 
 @njit(cache=True)
 def linreg_numba(close, length=14, r=False):

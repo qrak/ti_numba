@@ -1,8 +1,33 @@
 import numpy as np
 from numba import njit
 
-from src.ti_numba.indicators.overlap import ema_numba
+from ..overlap import ema_numba
 
+@njit(cache=True)
+def cci_numba(high, low, close, length=14, c=0.015):
+    n = len(close)
+    cci = np.full(n, np.nan)
+
+    tp_sum = np.sum((high[:length] + low[:length] + close[:length]) / 3)
+    tp_window = np.zeros(length)
+
+    for i in range(length - 1, n):
+        tp_current = (high[i] + low[i] + close[i]) / 3
+
+        if i >= length:
+            tp_sum = tp_sum - tp_window[0] + tp_current
+            np.roll(tp_window, -1)
+            tp_window[-1] = tp_current
+        else:
+            tp_window[i] = tp_current
+            tp_sum += tp_current
+
+        mean_tp = tp_sum / length
+        mad_tp = np.sum(np.abs(tp_window - mean_tp)) / length
+
+        cci[i] = (tp_current - mean_tp) / (c * mad_tp)
+
+    return cci
 
 @njit(cache=True)
 def mfi_numba(high, low, close, volume, length=14, drift=1):
@@ -194,3 +219,14 @@ def twap_numba(high, low, close, length):
         twap[i] = tp_sum / length
 
     return twap
+
+@njit(cache=True)
+def average_quote_volume_numba(close_prices, volumes, window_size):
+    n = len(close_prices)
+    quote_volumes = np.full(n, np.nan)
+    for i in range(window_size - 1, n):
+        average_close_price = np.mean(close_prices[i - window_size + 1:i + 1])
+        average_volume = np.mean(volumes[i - window_size + 1:i + 1])
+        quote_volumes[i] = average_close_price * average_volume
+    return quote_volumes
+

@@ -13,9 +13,9 @@ from .indicator_categories import (
 class TechnicalIndicators:
     def __init__(self, measure_time: bool = False, save_to_csv: bool = False) -> None:
         self._base = IndicatorBase(measure_time=measure_time, save_to_csv=save_to_csv)
-        self.momentum = MomentumIndicators(self._base)
         self.overlap = OverlapIndicators(self._base)
-        self.price_transform = PriceTransformIndicators(self._base)
+        self.momentum = MomentumIndicators(self._base, self.overlap)
+        self.price = PriceTransformIndicators(self._base)
         self.sentiment = SentimentIndicators(self._base)
         self.statistical = StatisticalIndicators(self._base)
         self.support_resistance = SupportResistanceIndicators(self._base)

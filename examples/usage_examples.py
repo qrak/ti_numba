@@ -1,12 +1,17 @@
+import sys
+import os
+# Add the parent directory to the Python path so we can import from src
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import timeit
 from typing import Dict, Optional, Tuple, Union
-
 import ccxt
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from src.ti_numba.base import TechnicalIndicators
+# Changed from relative import to absolute import
+from src.ti_numba.base.technical_indicators import TechnicalIndicators
 
 
 class MarketDataFetcher:
