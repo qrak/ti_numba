@@ -1,5 +1,5 @@
 import numpy as np
-from indicators.trend import supertrend_numba
+from src.indicators.trend import supertrend_numba
 from numba import njit
 
 

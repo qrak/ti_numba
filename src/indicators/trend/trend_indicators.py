@@ -1,8 +1,8 @@
 from typing import Tuple
 
 import numpy as np
-from indicators.overlap import ema_numba
-from indicators.volatility import atr_numba
+from src.indicators.overlap import ema_numba
+from src.indicators.volatility import atr_numba
 from numba import njit
 
 

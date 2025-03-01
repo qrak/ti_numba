@@ -3,7 +3,7 @@ import numpy as np
 import timeit
 from datetime import datetime
 
-from base import IndicatorBase, MomentumIndicators, OverlapIndicators, PriceTransformIndicators, \
+from src.base import IndicatorBase, MomentumIndicators, OverlapIndicators, PriceTransformIndicators, \
     SentimentIndicators, StatisticalIndicators, SupportResistanceIndicators, TrendIndicators, VolatilityIndicators, \
     VolumeIndicators
 

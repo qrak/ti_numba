@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from base import TechnicalIndicators
+from src.base import TechnicalIndicators
 
 
 class MarketDataFetcher:

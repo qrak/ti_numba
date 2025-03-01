@@ -2,16 +2,16 @@ from typing import TypeVar, Tuple
 
 import numpy as np
 
-from base import IndicatorCategory
-from indicators.momentum import *
-from indicators.overlap import *
-from indicators.price import *
-from indicators.sentiment import *
-from indicators.statistical import *
-from indicators.support_resistance import *
-from indicators.trend import *
-from indicators.volatility import *
-from indicators.volume import *
+from src.base import IndicatorCategory
+from src.indicators.momentum import *
+from src.indicators.overlap import *
+from src.indicators.price import *
+from src.indicators.sentiment import *
+from src.indicators.statistical import *
+from src.indicators.support_resistance import *
+from src.indicators.trend import *
+from src.indicators.volatility import *
+from src.indicators.volume import *
 
 T = TypeVar('T')
 

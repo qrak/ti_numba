@@ -1,5 +1,5 @@
 import numpy as np
-from indicators.overlap import ema_numba
+from src.indicators.overlap import ema_numba
 from numba import njit
 
 

@@ -3,7 +3,7 @@ from typing import Tuple
 import numpy as np
 from numba import njit
 
-from indicators.overlap import ema_numba, ewma_numba
+from src.indicators.overlap import ema_numba, ewma_numba
 
 
 @njit(cache=True)

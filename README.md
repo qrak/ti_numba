@@ -21,7 +21,7 @@
 
 ```python
 import numpy as np
-from base import TechnicalIndicators
+from src.base import TechnicalIndicators
 
 indicators = TechnicalIndicators(measure_time=True)
 
@@ -42,7 +42,7 @@ bb = indicators.volatility.bollinger_bands()
 
 ```python
 import pandas as pd
-from base import TechnicalIndicators
+from src.base import TechnicalIndicators
 
 df = pd.DataFrame({
     'Open': [10.0, 11.0, 12.0],
@@ -64,7 +64,7 @@ vwap = indicators.vol.rolling_vwap()
 
 ```python
 import numpy as np
-from base import TechnicalIndicators
+from src.base import TechnicalIndicators
 from datetime import datetime, timedelta
 
 dates = [datetime.now() + timedelta(days=x) for x in range(3)]
