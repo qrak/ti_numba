@@ -17,15 +17,7 @@
     - Volatility Indicators
     - Volume Indicators
 
-## Requirements
 
-- Python >= 3.9
-- pandas == 2.2.1
-- numpy ~= 1.26.4
-- numba == 0.60.0
-- ccxt == 4.4.28
-- matplotlib == 3.8.3
-- scipy == 1.14.1
 
 ## Usage with numpy data
 
