@@ -23,6 +23,20 @@ class TestIndicatorBaseHandleDataFrame:
 
 
 class TestIndicatorBaseHandleList:
+    def test_handle_list_empty_input(self):
+        """Test that passing an empty list raises a ValueError."""
+        indicator = IndicatorBase()
+
+        with pytest.raises(ValueError, match="Input must be a non-empty list of lists"):
+            indicator.get_data([])
+
+    def test_handle_list_invalid_input_type(self):
+        """Test that passing a list of non-lists raises a ValueError."""
+        indicator = IndicatorBase()
+
+        with pytest.raises(ValueError, match="Input must be a non-empty list of lists"):
+            indicator.get_data([1, 2, 3])
+
     def test_handle_list_invalid_column_count_less(self):
         """Test that passing a list of lists with fewer elements than expected raises a ValueError."""
         indicator = IndicatorBase()
