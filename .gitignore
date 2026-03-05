@@ -46,3 +46,5 @@ Thumbs.db
 
 # Ignore JSON files
 *.json
+.coverage
+htmlcov/
