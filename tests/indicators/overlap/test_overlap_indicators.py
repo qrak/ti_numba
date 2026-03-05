@@ -32,6 +32,14 @@ def test_sma_numba_with_nan():
     expected = np.array([np.nan, 1.5, np.nan, np.nan, np.nan])
     np.testing.assert_allclose(result, expected, equal_nan=True)
 
+def test_sma_numba_empty():
+    data = np.array([], dtype=np.float64)
+    length = 3
+    result = sma_numba(data, length)
+    expected = np.array([])
+    np.testing.assert_allclose(result, expected, equal_nan=True)
+
+
 def test_ema_numba_basic():
     data = np.arange(1, 11, dtype=np.float64)
     length = 3
@@ -78,6 +86,13 @@ def test_ema_numba_with_nans_in_middle():
 
     np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-8)
 
+def test_ema_numba_empty():
+    data = np.array([], dtype=np.float64)
+    length = 3
+    result = ema_numba(data, length)
+    expected = np.array([])
+    np.testing.assert_allclose(result, expected, equal_nan=True)
+
 def test_ewma_numba_basic():
     data = np.arange(1, 11, dtype=np.float64)
     span = 3
@@ -86,3 +101,22 @@ def test_ewma_numba_basic():
     expected = pd.Series(data).ewm(span=span, adjust=False).mean().values
 
     np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-8)
+
+def test_ewma_numba_with_nans():
+    data = np.array([1.0, 2.0, np.nan, 4.0, 5.0])
+    span = 3
+    result = ewma_numba(data, span)
+
+    # Pandas EWM with span, adjust=False handles NaNs by ignoring them and not advancing the decay
+    # ewma_numba currently propagates NaNs (NaN * alpha + (1-alpha) * out[i-1] = NaN)
+    # The subsequent values will also be NaN.
+    expected = np.array([1.0, 1.5, np.nan, np.nan, np.nan])
+
+    np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-8, equal_nan=True)
+
+def test_ewma_numba_empty():
+    data = np.array([], dtype=np.float64)
+    span = 3
+    result = ewma_numba(data, span)
+    expected = np.array([])
+    np.testing.assert_allclose(result, expected, equal_nan=True)
