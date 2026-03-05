@@ -15,26 +15,27 @@ def atr_numba(high, low, close, length=14, mamode='rma', percent=False):
         tr[i] = max(high[i] - low[i], abs(high[i] - close[i - 1]), abs(low[i] - close[i - 1]))
 
     if np.any(np.isnan(tr)) or np.any(np.isnan(high)) or np.any(np.isnan(low)) or np.any(np.isnan(close)):
-        return np.full(n, np.inf)
+        return np.full(n, np.nan)
 
     if mamode == 'ema':
-        atr[length - 1] = np.mean(tr[1:length])
+        atr[length] = np.mean(tr[1:length+1]) # EMA seed is SMA over 'length' elements
         alpha = 2 / (length + 1)
-        for i in range(length, n):
+        for i in range(length + 1, n):
             atr[i] = (1 - alpha) * atr[i - 1] + alpha * tr[i]
     elif mamode == 'sma':
-        sum_tr = np.sum(tr[1:length])
-        for i in range(length, n):
+        sum_tr = np.sum(tr[1:length+1]) # Initial sum of 'length' true ranges
+        atr[length] = sum_tr / length
+        for i in range(length + 1, n):
+            sum_tr += tr[i] - tr[i - length] # Update sum by adding current, subtracting oldest
             atr[i] = sum_tr / length
-            sum_tr += tr[i] - tr[i - length + 1]
     elif mamode == 'wma':
         weights = np.arange(1, length + 1).astype(np.float64)
         weight_sum = np.sum(weights)
-        for i in range(length, n):
+        for i in range(length, n): # WMA can start at length (requires tr[1:length+1])
             atr[i] = np.dot(tr[i - length + 1:i + 1], weights) / weight_sum
     else:
-        atr[length - 1] = np.mean(tr[1:length])
-        for i in range(length, n):
+        atr[length] = np.mean(tr[1:length+1]) # RMA seed is SMA over 'length' elements
+        for i in range(length + 1, n):
             atr[i] = (atr[i - 1] * (length - 1) + tr[i]) / length
 
     if percent:

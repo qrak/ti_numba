@@ -9,6 +9,9 @@ from src.indicators.overlap import ema_numba, ewma_numba
 @njit(cache=True)
 def rsi_numba(close: np.ndarray, length: int) -> np.ndarray:
     n = len(close)
+    if n <= length:
+        return np.full(n, np.nan)
+
     gains = np.zeros(n)
     losses = np.zeros(n)
 
