@@ -32,6 +32,34 @@ def test_sma_numba_with_nan():
     expected = np.array([np.nan, 1.5, np.nan, np.nan, np.nan])
     np.testing.assert_allclose(result, expected, equal_nan=True)
 
+def test_sma_numba_empty_array():
+    data = np.array([], dtype=np.float64)
+    length = 3
+    result = sma_numba(data, length)
+    expected = np.array([], dtype=np.float64)
+    np.testing.assert_allclose(result, expected, equal_nan=True)
+
+def test_sma_numba_length_one():
+    data = np.arange(1, 6, dtype=np.float64)
+    length = 1
+    result = sma_numba(data, length)
+    expected = pd.Series(data).rolling(window=length).mean().values
+    np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-8, equal_nan=True)
+
+def test_sma_numba_exact_length():
+    data = np.arange(1, 6, dtype=np.float64)
+    length = 5
+    result = sma_numba(data, length)
+    expected = pd.Series(data).rolling(window=length).mean().values
+    np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-8, equal_nan=True)
+
+def test_sma_numba_negative_values():
+    data = np.array([-10.0, -20.0, -30.0, -40.0, -50.0], dtype=np.float64)
+    length = 3
+    result = sma_numba(data, length)
+    expected = pd.Series(data).rolling(window=length).mean().values
+    np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-8, equal_nan=True)
+
 def test_ema_numba_basic():
     data = np.arange(1, 11, dtype=np.float64)
     length = 3
