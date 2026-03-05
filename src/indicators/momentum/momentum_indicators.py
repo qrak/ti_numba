@@ -9,6 +9,9 @@ from src.indicators.overlap import ema_numba, ewma_numba
 @njit(cache=True)
 def rsi_numba(close: np.ndarray, length: int) -> np.ndarray:
     n = len(close)
+    if n <= length:
+        return np.full(n, np.nan, dtype=np.float64)
+
     gains = np.zeros(n)
     losses = np.zeros(n)
 
@@ -39,6 +42,17 @@ def rsi_numba(close: np.ndarray, length: int) -> np.ndarray:
     return rsi
 
 @njit(cache=True)
+def _macd_ewma(data: np.ndarray, length: int) -> np.ndarray:
+    """Calculates EWMA initialized with an SMA of the first `length` elements."""
+    out = np.empty_like(data)
+    alpha = 2.0 / (length + 1)
+    ema = np.mean(data[:length])
+    for i in range(len(data)):
+        ema = data[i] * alpha + ema * (1 - alpha)
+        out[i] = ema
+    return out
+
+@njit(cache=True)
 def macd_numba(close: np.ndarray, fast_length: int = 12, slow_length: int = 26,
                signal_length: int = 9) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     n = len(close)
@@ -46,28 +60,20 @@ def macd_numba(close: np.ndarray, fast_length: int = 12, slow_length: int = 26,
     signal_line = np.full(n, np.nan, dtype=np.float64)
     histogram = np.full(n, np.nan, dtype=np.float64)
 
-    alpha_fast = 2.0 / (fast_length + 1)
-    alpha_slow = 2.0 / (slow_length + 1)
-    alpha_signal = 2.0 / (signal_length + 1)
+    fast_ema_arr = _macd_ewma(close, fast_length)
+    slow_ema_arr = _macd_ewma(close, slow_length)
 
-    fast_ema = np.mean(close[:fast_length])
-    slow_ema = np.mean(close[:slow_length])
-    signal = 0.0
+    for i in range(slow_length - 1, n):
+        macd_line[i] = fast_ema_arr[i] - slow_ema_arr[i]
 
-    for i in range(n):
-        fast_ema = close[i] * alpha_fast + fast_ema * (1 - alpha_fast)
-        slow_ema = close[i] * alpha_slow + slow_ema * (1 - alpha_slow)
+    if n >= slow_length:
+        alpha_signal = 2.0 / (signal_length + 1)
+        signal = macd_line[slow_length - 1]
 
-        if i >= slow_length - 1:
-            macd = fast_ema - slow_ema
-            macd_line[i] = macd
-
-            if i == slow_length - 1:
-                signal = macd
-            elif i > slow_length - 1:
-                signal = macd * alpha_signal + signal * (1 - alpha_signal)
-                signal_line[i] = signal
-                histogram[i] = macd - signal
+        for i in range(slow_length, n):
+            signal = macd_line[i] * alpha_signal + signal * (1 - alpha_signal)
+            signal_line[i] = signal
+            histogram[i] = macd_line[i] - signal
 
     return macd_line, signal_line, histogram
 
