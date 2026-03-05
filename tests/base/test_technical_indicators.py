@@ -89,5 +89,19 @@ class TestTechnicalIndicators(unittest.TestCase):
         np.testing.assert_array_equal(self.ti.close, np.array([1.5, 2.5]))
         np.testing.assert_array_equal(self.ti.volume, np.array([100.0, 200.0]))
 
+    def test_get_data_empty(self):
+        # Empty properties before get_data
+        ti_empty = TechnicalIndicators()
+        self.assertEqual(len(ti_empty.open), 0)
+        self.assertEqual(len(ti_empty.high), 0)
+        self.assertEqual(len(ti_empty.low), 0)
+        self.assertEqual(len(ti_empty.close), 0)
+        self.assertEqual(len(ti_empty.volume), 0)
+
+    def test_get_data_invalid(self):
+        # Pass a completely invalid object to get_data and expect TypeError
+        with self.assertRaises(TypeError):
+            self.ti.get_data("invalid data type")
+
 if __name__ == '__main__':
     unittest.main()

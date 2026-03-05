@@ -9,6 +9,10 @@ from src.indicators.overlap import ema_numba, ewma_numba
 @njit(cache=True)
 def rsi_numba(close: np.ndarray, length: int) -> np.ndarray:
     n = len(close)
+    rsi = np.full(n, np.nan)
+    if n <= length:
+        return rsi
+
     gains = np.zeros(n)
     losses = np.zeros(n)
 
@@ -17,7 +21,6 @@ def rsi_numba(close: np.ndarray, length: int) -> np.ndarray:
         gains[i] = max(0, diff)
         losses[i] = max(0, -diff)
 
-    rsi = np.full(n, np.nan)
     avg_gain = np.sum(gains[1:length + 1]) / length
     avg_loss = np.sum(losses[1:length + 1]) / length
 
