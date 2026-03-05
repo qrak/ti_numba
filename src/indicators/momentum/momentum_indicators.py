@@ -21,11 +21,12 @@ def rsi_numba(close: np.ndarray, length: int) -> np.ndarray:
     avg_gain = np.sum(gains[1:length + 1]) / length
     avg_loss = np.sum(losses[1:length + 1]) / length
 
-    if avg_loss == 0:
-        rsi[length] = 100
-    else:
-        rs = avg_gain / avg_loss
-        rsi[length] = 100 - (100 / (1 + rs))
+    if n > length:
+        if avg_loss == 0:
+            rsi[length] = 100
+        else:
+            rs = avg_gain / avg_loss
+            rsi[length] = 100 - (100 / (1 + rs))
 
     for i in range(length + 1, n):
         avg_gain = ((avg_gain * (length - 1)) + gains[i]) / length
