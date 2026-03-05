@@ -47,3 +47,7 @@ Thumbs.db
 # Ignore JSON files
 *.json
 .coverage
+
+.coverage
+htmlcov/
+.pytest_cache/
