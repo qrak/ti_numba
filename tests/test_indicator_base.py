@@ -2,6 +2,21 @@ import pytest
 import numpy as np
 from src.base.indicator_base import IndicatorBase
 
+class TestIndicatorBaseGetData:
+    def test_get_data_invalid_type(self):
+        """Test that passing an invalid data type (like int or string) raises a TypeError."""
+        indicator = IndicatorBase()
+
+        with pytest.raises(TypeError, match="Data must be a Pandas DataFrame, NumPy array, or List"):
+            indicator.get_data(123)
+
+        with pytest.raises(TypeError, match="Data must be a Pandas DataFrame, NumPy array, or List"):
+            indicator.get_data("invalid")
+
+        with pytest.raises(TypeError, match="Data must be a Pandas DataFrame, NumPy array, or List"):
+            indicator.get_data({"invalid": "dict"})
+
+
 class TestIndicatorBaseHandleList:
     def test_handle_list_invalid_column_count_less(self):
         """Test that passing a list of lists with fewer elements than expected raises a ValueError."""
