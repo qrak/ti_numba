@@ -1,6 +1,87 @@
 import numpy as np
 from numba import njit
 
+
+@njit(cache=True)
+def _rsi_window(window_close, rsi_length, window_size):
+    rsi_list = np.full(window_size, np.nan)
+    gains = np.maximum(0, window_close[1:] - window_close[:-1])
+    losses = np.maximum(0, window_close[:-1] - window_close[1:])
+
+    avg_gain = np.sum(gains[:rsi_length]) / rsi_length
+    avg_loss = np.sum(losses[:rsi_length]) / rsi_length
+
+    if avg_loss == 0:
+        rsi_list[rsi_length - 1] = 100
+    else:
+        rs = avg_gain / avg_loss
+        rsi_list[rsi_length - 1] = 100 - (100 / (1 + rs))
+
+    for i in range(rsi_length, window_size):
+        avg_gain = ((avg_gain * (rsi_length - 1)) + gains[i - 1]) / rsi_length
+        avg_loss = ((avg_loss * (rsi_length - 1)) + losses[i - 1]) / rsi_length
+        if avg_loss == 0:
+            rsi_list[i] = 100
+        else:
+            rs = avg_gain / avg_loss
+            rsi_list[i] = 100 - (100 / (1 + rs))
+
+    return rsi_list
+
+
+@njit(cache=True)
+def _macd_window(window_close, macd_fast_length, macd_slow_length, macd_signal_length, window_size):
+    macd_list = np.full(window_size, np.nan, dtype=np.float64)
+    signal_list = np.full(window_size, np.nan, dtype=np.float64)
+    histogram_list = np.full(window_size, np.nan, dtype=np.float64)
+
+    fast_ema = np.mean(window_close[:macd_fast_length])
+    slow_ema = np.mean(window_close[:macd_slow_length])
+    signal = np.nan
+
+    multiplier_fast = 2 / (macd_fast_length + 1)
+    multiplier_slow = 2 / (macd_slow_length + 1)
+    multiplier_signal = 2 / (macd_signal_length + 1)
+
+    for i in range(1, window_size):
+        fast_ema = (window_close[i] - fast_ema) * multiplier_fast + fast_ema
+        slow_ema = (window_close[i] - slow_ema) * multiplier_slow + slow_ema
+
+        if i >= macd_slow_length - 1:
+            macd = fast_ema - slow_ema
+            macd_list[i] = macd
+
+            if not np.isnan(macd) and np.isnan(signal):
+                signal = macd
+
+            if i >= macd_slow_length + macd_signal_length - 2:
+                if not np.isnan(signal):
+                    signal = (macd - signal) * multiplier_signal + signal
+                    signal_list[i] = signal
+                    histogram_list[i] = macd - signal
+
+    return histogram_list
+
+
+@njit(cache=True)
+def _mfi_window(window_high, window_low, window_close, window_volume, mfi_length, window_size):
+    mfi_list = np.full(window_size, np.nan)
+    tp = (window_high + window_low + window_close) / 3
+    rmf = tp * window_volume
+
+    for i in range(mfi_length, window_size):
+        pmf = np.sum(rmf[i - mfi_length + 1:i + 1][tp[i - mfi_length + 1:i + 1] > tp[i - mfi_length:i]])
+        nmf = np.sum(rmf[i - mfi_length + 1:i + 1][tp[i - mfi_length + 1:i + 1] < tp[i - mfi_length:i]])
+
+        if nmf == 0:
+            mfi_list[i] = 100
+        else:
+            mfr = pmf / nmf
+            mfi_list[i] = 100 * mfr / (1 + mfr)
+
+    return mfi_list
+
+
 @njit(cache=True)
 def fear_and_greed_index_numba(close, high, low, volume, rsi_length, macd_fast_length, macd_slow_length,
                                macd_signal_length, mfi_length, window_size):
@@ -14,70 +95,9 @@ def fear_and_greed_index_numba(close, high, low, volume, rsi_length, macd_fast_l
         window_low = low[start:end]
         window_volume = volume[start:end]
 
-        rsi_list = np.full(window_size, np.nan)
-        gains = np.maximum(0, window_close[1:] - window_close[:-1])
-        losses = np.maximum(0, window_close[:-1] - window_close[1:])
-
-        avg_gain = np.sum(gains[:rsi_length]) / rsi_length
-        avg_loss = np.sum(losses[:rsi_length]) / rsi_length
-
-        if avg_loss == 0:
-            rsi_list[rsi_length - 1] = 100
-        else:
-            rs = avg_gain / avg_loss
-            rsi_list[rsi_length - 1] = 100 - (100 / (1 + rs))
-
-        for i in range(rsi_length, window_size):
-            avg_gain = ((avg_gain * (rsi_length - 1)) + gains[i - 1]) / rsi_length
-            avg_loss = ((avg_loss * (rsi_length - 1)) + losses[i - 1]) / rsi_length
-            if avg_loss == 0:
-                rsi_list[i] = 100
-            else:
-                rs = avg_gain / avg_loss
-                rsi_list[i] = 100 - (100 / (1 + rs))
-
-        macd_list = np.full(window_size, np.nan, dtype=np.float64)
-        signal_list = np.full(window_size, np.nan, dtype=np.float64)
-        histogram_list = np.full(window_size, np.nan, dtype=np.float64)
-
-        fast_ema = np.mean(window_close[:macd_fast_length])
-        slow_ema = np.mean(window_close[:macd_slow_length])
-        signal = np.nan
-
-        multiplier_fast = 2 / (macd_fast_length + 1)
-        multiplier_slow = 2 / (macd_slow_length + 1)
-        multiplier_signal = 2 / (macd_signal_length + 1)
-
-        for i in range(1, window_size):
-            fast_ema = (window_close[i] - fast_ema) * multiplier_fast + fast_ema
-            slow_ema = (window_close[i] - slow_ema) * multiplier_slow + slow_ema
-
-            if i >= macd_slow_length - 1:
-                macd = fast_ema - slow_ema
-                macd_list[i] = macd
-
-                if not np.isnan(macd) and np.isnan(signal):
-                    signal = macd
-
-                if i >= macd_slow_length + macd_signal_length - 2:
-                    if not np.isnan(signal):
-                        signal = (macd - signal) * multiplier_signal + signal
-                        signal_list[i] = signal
-                        histogram_list[i] = macd - signal
-
-        mfi_list = np.full(window_size, np.nan)
-        tp = (window_high + window_low + window_close) / 3
-        rmf = tp * window_volume
-
-        for i in range(mfi_length, window_size):
-            pmf = np.sum(rmf[i - mfi_length + 1:i + 1][tp[i - mfi_length + 1:i + 1] > tp[i - mfi_length:i]])
-            nmf = np.sum(rmf[i - mfi_length + 1:i + 1][tp[i - mfi_length + 1:i + 1] < tp[i - mfi_length:i]])
-
-            if nmf == 0:
-                mfi_list[i] = 100
-            else:
-                mfr = pmf / nmf
-                mfi_list[i] = 100 * mfr / (1 + mfr)
+        rsi_list = _rsi_window(window_close, rsi_length, window_size)
+        histogram_list = _macd_window(window_close, macd_fast_length, macd_slow_length, macd_signal_length, window_size)
+        mfi_list = _mfi_window(window_high, window_low, window_close, window_volume, mfi_length, window_size)
 
         for i in range(max(rsi_length, macd_slow_length + macd_signal_length - 1, mfi_length), window_size):
             normalized_rsi = (rsi_list[i] - 30) / (70 - 30) * 100
