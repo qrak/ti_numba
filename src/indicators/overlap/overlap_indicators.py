@@ -3,6 +3,9 @@ from numba import njit
 
 @njit(cache=True)
 def ewma_numba(data, span):
+    if len(data) == 0:
+        return np.empty_like(data)
+
     alpha = 2 / (span + 1)
     out = np.empty_like(data)
     out[0] = data[0]
