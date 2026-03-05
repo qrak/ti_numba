@@ -213,8 +213,22 @@ def ppo_numba(close, fast_length, slow_length):
 
 @njit(cache=True)
 def coppock_curve_numba(close, wl1=14, wl2=11, wma_length=10):
-    roc_long = ((close - np.roll(close, wl1)) / np.roll(close, wl1)) * 100
-    roc_short = ((close - np.roll(close, wl2)) / np.roll(close, wl2)) * 100
+    n = len(close)
+    roc_long = np.full(n, np.nan)
+    roc_short = np.full(n, np.nan)
+
+    for i in range(wl1, n):
+        if close[i - wl1] != 0:
+            roc_long[i] = ((close[i] - close[i - wl1]) / close[i - wl1]) * 100
+        else:
+            roc_long[i] = 0.0
+
+    for i in range(wl2, n):
+        if close[i - wl2] != 0:
+            roc_short[i] = ((close[i] - close[i - wl2]) / close[i - wl2]) * 100
+        else:
+            roc_short[i] = 0.0
+
     coppock_arr = roc_long + roc_short
     ewma_coppock = ewma_numba(coppock_arr, wma_length)
     return ewma_coppock
