@@ -8,24 +8,20 @@ def cci_numba(high, low, close, length=14, c=0.015):
     n = len(close)
     cci = np.full(n, np.nan)
 
-    tp_sum = np.sum((high[:length] + low[:length] + close[:length]) / 3)
-    tp_window = np.zeros(length)
+    if n < length:
+        return cci
+
+    tp = (high + low + close) / 3.0
 
     for i in range(length - 1, n):
-        tp_current = (high[i] + low[i] + close[i]) / 3
+        window = tp[i - length + 1 : i + 1]
+        mean_tp = np.mean(window)
+        mad_tp = np.sum(np.abs(window - mean_tp)) / length
 
-        if i >= length:
-            tp_sum = tp_sum - tp_window[0] + tp_current
-            np.roll(tp_window, -1)
-            tp_window[-1] = tp_current
+        if mad_tp == 0:
+            cci[i] = 0.0
         else:
-            tp_window[i] = tp_current
-            tp_sum += tp_current
-
-        mean_tp = tp_sum / length
-        mad_tp = np.sum(np.abs(tp_window - mean_tp)) / length
-
-        cci[i] = (tp_current - mean_tp) / (c * mad_tp)
+            cci[i] = (tp[i] - mean_tp) / (c * mad_tp)
 
     return cci
 
