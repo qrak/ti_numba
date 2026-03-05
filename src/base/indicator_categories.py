@@ -1,6 +1,7 @@
 from typing import TypeVar, Tuple
 
 import numpy as np
+from dataclasses import dataclass
 
 from src.base import IndicatorCategory
 from src.indicators.momentum import *
@@ -14,6 +15,18 @@ from src.indicators.volatility import *
 from src.indicators.volume import *
 
 T = TypeVar('T')
+
+
+@dataclass
+class KSTConfig:
+    roc1_length: int = 5
+    roc2_length: int = 10
+    roc3_length: int = 15
+    roc4_length: int = 20
+    sma1_length: int = 3
+    sma2_length: int = 5
+    sma3_length: int = 7
+    sma4_length: int = 9
 
 
 class MomentumIndicators(IndicatorCategory['MomentumIndicators']):
@@ -140,26 +153,19 @@ class MomentumIndicators(IndicatorCategory['MomentumIndicators']):
             required_length=window
         )
 
-    def kst(self,
-            roc1_length: int = 5,
-            roc2_length: int = 10,
-            roc3_length: int = 15,
-            roc4_length: int = 20,
-            sma1_length: int = 3,
-            sma2_length: int = 5,
-            sma3_length: int = 7,
-            sma4_length: int = 9
-        ) -> np.ndarray:
+    def kst(self, config: KSTConfig = None) -> np.ndarray:
+        if config is None:
+            config = KSTConfig()
 
-        roc1 = self.roc(length=roc1_length)
-        roc2 = self.roc(length=roc2_length)
-        roc3 = self.roc(length=roc3_length)
-        roc4 = self.roc(length=roc4_length)
+        roc1 = self.roc(length=config.roc1_length)
+        roc2 = self.roc(length=config.roc2_length)
+        roc3 = self.roc(length=config.roc3_length)
+        roc4 = self.roc(length=config.roc4_length)
 
-        rcma1 = self.overlap.sma(data_series=roc1, length=sma1_length)
-        rcma2 = self.overlap.sma(data_series=roc2, length=sma2_length)
-        rcma3 = self.overlap.sma(data_series=roc3, length=sma3_length)
-        rcma4 = self.overlap.sma(data_series=roc4, length=sma4_length)
+        rcma1 = self.overlap.sma(data_series=roc1, length=config.sma1_length)
+        rcma2 = self.overlap.sma(data_series=roc2, length=config.sma2_length)
+        rcma3 = self.overlap.sma(data_series=roc3, length=config.sma3_length)
+        rcma4 = self.overlap.sma(data_series=roc4, length=config.sma4_length)
 
         return rcma1 * 1 + rcma2 * 2 + rcma3 * 3 + rcma4 * 4
 
