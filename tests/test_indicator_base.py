@@ -2,6 +2,26 @@ import pytest
 import numpy as np
 from src.base.indicator_base import IndicatorBase
 
+import pandas as pd
+
+class TestIndicatorBaseHandleDataFrame:
+    def test_handle_dataframe_missing_columns(self):
+        """Test that passing a DataFrame with missing required columns raises a ValueError."""
+        indicator = IndicatorBase()
+
+        # Create DataFrame missing 'volume'
+        data = {
+            'open': [10.0, 11.0],
+            'high': [12.0, 13.0],
+            'low': [9.0, 10.0],
+            'close': [11.0, 12.0]
+        }
+        df = pd.DataFrame(data)
+
+        with pytest.raises(ValueError, match="Missing columns in DataFrame: {'volume'}"):
+            indicator.get_data(df)
+
+
 class TestIndicatorBaseHandleList:
     def test_handle_list_invalid_column_count_less(self):
         """Test that passing a list of lists with fewer elements than expected raises a ValueError."""
