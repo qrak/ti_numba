@@ -454,16 +454,19 @@ class SupportResistanceIndicators(IndicatorCategory['SupportResistanceIndicators
             length: int = 7,
             multiplier: float = 3.0,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        config = FloatingLevelsConfig(
+            length=length,
+            multiplier=multiplier,
+            lookback=lookback,
+            level_up=level_up,
+            level_down=level_down
+        )
         return self._base.calculate_indicator(
             floating_levels_numba,
             self.high,
             self.low,
             self.close,
-            length,
-            multiplier,
-            lookback,
-            level_up,
-            level_down,
+            config,
             required_length=lookback
         )
 

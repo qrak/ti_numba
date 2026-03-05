@@ -130,27 +130,35 @@ def fibonacci_retracement_numba(length, high, low):
 
     return retracement_values
 
+from typing import NamedTuple
+
+class FloatingLevelsConfig(NamedTuple):
+    length: int
+    multiplier: float
+    lookback: int
+    level_up: float
+    level_down: float
+
 @njit(cache=True)
 def floating_levels_numba(high: np.ndarray, low: np.ndarray, close: np.ndarray,
-                         length: int, multiplier: float, lookback: int,
-                         level_up: float, level_down: float):
-    supertrend, _ = supertrend_numba(high, low, close, length, multiplier)
+                         config: FloatingLevelsConfig):
+    supertrend, _ = supertrend_numba(high, low, close, config.length, config.multiplier)
     n = len(supertrend)
     flu = np.empty(n, dtype=np.float64)
     fld = np.empty(n, dtype=np.float64)
     flm = np.empty(n, dtype=np.float64)
 
-    for i in range(lookback, n):
-        mini = np.min(supertrend[i - lookback:i])
-        maxi = np.max(supertrend[i - lookback:i])
+    for i in range(config.lookback, n):
+        mini = np.min(supertrend[i - config.lookback:i])
+        maxi = np.max(supertrend[i - config.lookback:i])
         rrange = maxi - mini
-        flu[i] = mini + level_up * rrange / 100.0
-        fld[i] = mini + level_down * rrange / 100.0
+        flu[i] = mini + config.level_up * rrange / 100.0
+        fld[i] = mini + config.level_down * rrange / 100.0
         flm[i] = mini + 0.5 * rrange
 
-    flu[:lookback] = np.nan
-    fld[:lookback] = np.nan
-    flm[:lookback] = np.nan
+    flu[:config.lookback] = np.nan
+    fld[:config.lookback] = np.nan
+    flm[:config.lookback] = np.nan
 
     return flu, fld, flm
 
