@@ -59,3 +59,15 @@ class TestIndicatorBaseHandleList:
 
         np.testing.assert_array_equal(indicator.timestamp, np.array([1672531200.0, 1672617600.0]))
         np.testing.assert_array_equal(indicator.open, np.array([10.0, 11.0]))
+
+
+class TestIndicatorBaseCalculateIndicator:
+    def test_calculate_indicator_uninitialized_data(self):
+        """Test that calling calculate_indicator with uninitialized data raises a ValueError."""
+        indicator = IndicatorBase()
+
+        def dummy_func(*args, **kwargs):
+            pass
+
+        with pytest.raises(ValueError, match="Data not initialized. Call get_data\(\) first."):
+            indicator.calculate_indicator(dummy_func)
