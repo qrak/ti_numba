@@ -59,3 +59,12 @@ class TestIndicatorBaseHandleList:
 
         np.testing.assert_array_equal(indicator.timestamp, np.array([1672531200.0, 1672617600.0]))
         np.testing.assert_array_equal(indicator.open, np.array([10.0, 11.0]))
+
+    def test_handle_list_invalid_col_count_4_and_7(self):
+        indicator = IndicatorBase()
+
+        with pytest.raises(ValueError, match="Each list must contain 5 or 6 elements"):
+            indicator.get_data([[1, 2, 3, 4]])
+
+        with pytest.raises(ValueError, match="Each list must contain 5 or 6 elements"):
+            indicator.get_data([[1, 2, 3, 4, 5, 6, 7]])
