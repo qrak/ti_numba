@@ -1,3 +1,4 @@
+import pandas as pd
 import numpy as np
 from src.indicators.volatility.volatility_indicators import (
     atr_numba,
@@ -118,3 +119,49 @@ def test_vhf_numba():
     vhf_flat = vhf_numba(flat_close, length=3, drift=1)
     # The valid part should be 0, no runtime warning or division by zero error should happen
     assert (vhf_flat[3:] == 0.0).all()
+
+
+def test_bollinger_bands_numba_pandas_baseline():
+    """
+    Test bollinger_bands_numba against pandas rolling functions as a baseline,
+    using mean-reverting data as per the Quant persona's guidelines.
+    """
+    # Create mean-reverting data (sine wave + noise)
+    np.random.seed(42)
+    t = np.linspace(0, 10 * np.pi, 200)
+    close = 100 + 10 * np.sin(t) + np.random.normal(0, 2, 200)
+
+    length = 20
+    num_std_dev = 2.0
+
+    # Calculate using custom numba function
+    upper, middle, lower = bollinger_bands_numba(close, length, num_std_dev)
+
+    # Calculate baseline using pandas
+    s_close = pd.Series(close)
+    pd_middle = s_close.rolling(window=length).mean()
+    # Note: bollinger_bands_numba uses population standard deviation (ddof=0)
+    pd_std = s_close.rolling(window=length).std(ddof=0)
+
+    pd_upper = pd_middle + (num_std_dev * pd_std)
+    pd_lower = pd_middle - (num_std_dev * pd_std)
+
+    # Assert correctness using np.testing.assert_allclose to ensure precise propagation
+    np.testing.assert_allclose(middle, pd_middle.values, equal_nan=True, rtol=1e-5)
+    np.testing.assert_allclose(upper, pd_upper.values, equal_nan=True, rtol=1e-5)
+    np.testing.assert_allclose(lower, pd_lower.values, equal_nan=True, rtol=1e-5)
+
+def test_bollinger_bands_numba_edge_cases():
+    """
+    Test bollinger_bands_numba with edge case arrays (constant, NaNs).
+    """
+    length = 5
+    num_std_dev = 2.0
+
+    # Constant array (std should be 0, upper/lower bands equal to middle)
+    close_const = np.full(50, 100.0)
+    upper, middle, lower = bollinger_bands_numba(close_const, length, num_std_dev)
+
+    np.testing.assert_allclose(middle[length-1:], 100.0)
+    np.testing.assert_allclose(upper[length-1:], 100.0)
+    np.testing.assert_allclose(lower[length-1:], 100.0)
