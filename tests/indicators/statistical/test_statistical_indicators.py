@@ -115,9 +115,9 @@ def test_skew_numba(sample_data):
             window = sample_data[i - length + 1 : i + 1]
             n = len(window)
             mean = np.mean(window)
-            std_dev = np.std(window) # using biased standard deviation (ddof=0)
+            std_dev = np.std(window, ddof=1) # using sample standard deviation (ddof=1)
             skew_sum = np.sum(((window - mean) / std_dev) ** 3)
-            val = ((n * (n + 1)) / ((n - 1) * (n - 2) * (n - 3))) * skew_sum
+            val = (n / ((n - 1) * (n - 2))) * skew_sum
             expected.append(val)
     expected = np.array(expected)
 
@@ -137,11 +137,11 @@ def test_kurtosis_numba(sample_data):
             window = sample_data[i - length + 1 : i + 1]
             n = len(window)
             mean = np.mean(window)
-            std_dev = np.std(window) # using biased standard deviation (ddof=0)
+            std_dev = np.std(window, ddof=1) # using sample standard deviation (ddof=1)
             kurtosis_sum = np.sum(((window - mean) / std_dev) ** 4)
             kurtosis_constant = (n * (n + 1)) / ((n - 1) * (n - 2) * (n - 3))
             kurt = kurtosis_constant * kurtosis_sum
-            kurt -= 3 * (n - 1) / ((n - 2) * (n - 3))
+            kurt -= 3 * ((n - 1) ** 2) / ((n - 2) * (n - 3))
             expected.append(kurt)
     expected = np.array(expected)
 
