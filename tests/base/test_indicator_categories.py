@@ -113,6 +113,22 @@ class TestMomentumIndicators:
             required_length=3
         )
 
+class TestVolumeIndicators:
+    @pytest.fixture
+    def mock_base(self):
+        class DummyBase:
+            def __init__(self):
+                self.high = np.array([10.0, 11.0, 12.0, 11.0, 10.0, 12.0, 13.0, 15.0, 14.0, 13.0, 15.0])
+                self.low = np.array([8.0, 9.0, 10.0, 9.0, 8.0, 10.0, 11.0, 13.0, 12.0, 11.0, 13.0])
+                self.close = np.array([9.0, 10.0, 11.0, 10.0, 9.0, 11.0, 12.0, 14.0, 13.0, 12.0, 14.0])
+                self.volume = np.array([100.0, 200.0, 300.0, 200.0, 100.0, 200.0, 300.0, 400.0, 300.0, 200.0, 300.0])
+
+            def calculate_indicator(self, func, *args, **kwargs):
+                return func(*args)
+
+        dummy = DummyBase()
+        dummy._base = dummy
+        return dummy
 
 class TestVolumeIndicators:
     @pytest.fixture
