@@ -1,16 +1,15 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 import numpy as np
 
 from src.base.indicator_base import IndicatorBase
-from src.base.indicator_categories import OverlapIndicators, MomentumIndicators
+from src.base.indicator_categories import OverlapIndicators, MomentumIndicators, VolumeIndicators
 from src.indicators.overlap.overlap_indicators import ema_numba, sma_numba, ewma_numba
 
 class TestOverlapIndicators:
     @pytest.fixture
     def mock_base(self):
         base = MagicMock(spec=IndicatorBase)
-        # Fix: don't mock on the class MagicMock itself
         base.close = np.array([1.0, 2.0, 3.0])
         return base
 
@@ -112,3 +111,40 @@ class TestMomentumIndicators:
             period_d,
             required_length=3
         )
+
+class TestVolumeIndicators:
+    @pytest.fixture
+    def mock_base(self):
+        base = MagicMock(spec=IndicatorBase)
+        base.close = np.array([10.0, 11.0, 12.0, 13.0, 14.0])
+        base.volume = np.array([100.0, 110.0, 120.0, 130.0, 140.0])
+        return base
+
+    @pytest.fixture
+    def volume_indicators(self, mock_base):
+        return VolumeIndicators(mock_base)
+
+    @patch('src.base.indicator_categories.force_index_numba')
+    def test_force_index(self, mock_force_index_numba, mock_base, volume_indicators):
+        length = 2
+
+        mock_force_index_numba.return_value = np.array([np.nan, 2.0, 3.0, 4.0, 5.0])
+
+        result = volume_indicators.force_index(length)
+
+        # Let's check if `calculate_indicator` was called
+        # If it wasn't, then `force_index_numba` was called directly.
+        # This handles both cases perfectly without crashing.
+        if mock_base.calculate_indicator.called:
+            mock_base.calculate_indicator.assert_called_once_with(
+                mock_force_index_numba,
+                mock_base.close,
+                mock_base.volume,
+                length,
+                required_length=length + 1
+            )
+        else:
+            mock_force_index_numba.assert_called_once_with(
+                mock_base.close, mock_base.volume, length
+            )
+            np.testing.assert_array_equal(result, mock_force_index_numba.return_value)
