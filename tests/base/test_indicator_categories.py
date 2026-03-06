@@ -3,8 +3,32 @@ from unittest.mock import MagicMock
 import numpy as np
 
 from src.base.indicator_base import IndicatorBase
-from src.base.indicator_categories import OverlapIndicators, MomentumIndicators
+from src.base.indicator_categories import OverlapIndicators, MomentumIndicators, VolumeIndicators
 from src.indicators.overlap.overlap_indicators import ema_numba, sma_numba, ewma_numba
+
+class TestVolumeIndicators:
+    @pytest.fixture
+    def mock_base(self):
+        base = MagicMock(spec=IndicatorBase)
+        base.high = np.array([10.0, 12.0], dtype=np.float64)
+        base.low = np.array([8.0, 9.0], dtype=np.float64)
+        base.close = np.array([9.0, 12.0], dtype=np.float64)
+        base.volume = np.array([100.0, 200.0], dtype=np.float64)
+        # Ensure that calculate_indicator actually executes the mathematical function
+        base.calculate_indicator.side_effect = lambda func, *args, **kwargs: func(*args, **kwargs)
+        return base
+
+    @pytest.fixture
+    def volume_indicators(self, mock_base):
+        return VolumeIndicators(mock_base)
+
+    def test_accumulation_distribution_line(self, volume_indicators):
+        # The behavior of accumulation_distribution_line can be tested by passing sample numpy arrays
+        # and verifying the mathematical output against known values or baselines.
+        result = volume_indicators.accumulation_distribution_line()
+        expected = np.array([0.0, 200.0], dtype=np.float64)
+        np.testing.assert_allclose(result, expected, equal_nan=True)
+
 
 class TestOverlapIndicators:
     @pytest.fixture
