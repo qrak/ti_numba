@@ -112,3 +112,71 @@ class TestMomentumIndicators:
             period_d,
             required_length=3
         )
+
+class TestVolumeIndicators:
+    @pytest.fixture
+    def mock_base(self):
+        class DummyBase:
+            def __init__(self):
+                self.high = np.array([10.0, 11.0, 12.0, 11.0, 10.0, 12.0, 13.0, 15.0, 14.0, 13.0, 15.0])
+                self.low = np.array([8.0, 9.0, 10.0, 9.0, 8.0, 10.0, 11.0, 13.0, 12.0, 11.0, 13.0])
+                self.close = np.array([9.0, 10.0, 11.0, 10.0, 9.0, 11.0, 12.0, 14.0, 13.0, 12.0, 14.0])
+                self.volume = np.array([100.0, 200.0, 300.0, 200.0, 100.0, 200.0, 300.0, 400.0, 300.0, 200.0, 300.0])
+
+            def calculate_indicator(self, func, *args, **kwargs):
+                return func(*args)
+
+        dummy = DummyBase()
+        dummy._base = dummy
+        return dummy
+
+    @pytest.fixture
+    def volume_indicators(self, mock_base):
+        from src.base.indicator_categories import VolumeIndicators
+        return VolumeIndicators(mock_base)
+
+    def test_mfi_mathematical(self, mock_base, volume_indicators):
+        length = 3
+        drift = 1
+        result = volume_indicators.mfi(length=length, drift=drift)
+
+        expected = np.array([
+            np.nan, np.nan, np.nan, 72.60273973, 53.22580645, 43.1372549,
+            86.56716418, 100.0, 70.22900763, 47.05882353, 40.0
+        ])
+
+        np.testing.assert_allclose(result, expected, equal_nan=True)
+
+    def test_cci_mathematical(self, mock_base, volume_indicators):
+        length = 3
+        c = 0.015
+        result = volume_indicators.cci(length=length, constant=c)
+
+        expected = np.array([
+            np.nan, np.nan, 100., -50., -100., 100., 80., 100., 0., -100., 100.
+        ])
+
+        np.testing.assert_allclose(result, expected, equal_nan=True)
+
+    def test_obv_mathematical(self, mock_base, volume_indicators):
+        length = 3
+        initial = 1
+        result = volume_indicators.obv(length=length, initial=initial)
+
+        expected = np.array([
+            np.nan, np.nan, 300., 100., 0., 200., 500., 900., 600., 400., 700.
+        ])
+
+        np.testing.assert_allclose(result, expected, equal_nan=True)
+
+    def test_pvt_mathematical(self, mock_base, volume_indicators):
+        length = 3
+        drift = 1
+        result = volume_indicators.pvt(length=length, drift=drift)
+
+        expected = np.array([
+            np.nan, np.nan, 30., 11.81818182, 1.81818182, 46.26262626,
+            73.53535354, 140.2020202, 118.77344877, 103.38883339, 153.38883339
+        ])
+
+        np.testing.assert_allclose(result, expected, equal_nan=True)
