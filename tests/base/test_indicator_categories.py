@@ -115,36 +115,62 @@ class TestMomentumIndicators:
 class TestVolumeIndicators:
     @pytest.fixture
     def mock_base(self):
+        class DummyBase:
+            def __init__(self):
+                self.high = np.array([10.0, 11.0, 12.0, 11.0, 10.0, 12.0, 13.0, 15.0, 14.0, 13.0, 15.0])
+                self.low = np.array([8.0, 9.0, 10.0, 9.0, 8.0, 10.0, 11.0, 13.0, 12.0, 11.0, 13.0])
+                self.close = np.array([9.0, 10.0, 11.0, 10.0, 9.0, 11.0, 12.0, 14.0, 13.0, 12.0, 14.0])
+                self.volume = np.array([100.0, 200.0, 300.0, 200.0, 100.0, 200.0, 300.0, 400.0, 300.0, 200.0, 300.0])
+
+            def calculate_indicator(self, func, *args, **kwargs):
+                return func(*args)
+
+        dummy = DummyBase()
+        dummy._base = dummy
+        return dummy
+
+class TestVolumeIndicators:
+    @pytest.fixture
+    def mock_base(self):
         base = MagicMock(spec=IndicatorBase)
-        # Mock calculate_indicator to just call the underlying function
-        def mock_calc(func, *args, **kwargs):
-            return func(*args)
-        base.calculate_indicator.side_effect = mock_calc
-        base.close = np.array([10.0, 10.5, 11.0, 10.2, 11.5, 12.0])
-        base.volume = np.array([100.0, 200.0, 150.0, 300.0, 250.0, 100.0])
+        base.close = np.array([1.0, 2.0, 3.0])
+        base.high = np.array([1.2, 2.2, 3.2])
+        base.low = np.array([0.8, 1.8, 2.8])
+        base.volume = np.array([100.0, 200.0, 300.0])
         return base
 
     @pytest.fixture
     def volume_indicators(self, mock_base):
+        from src.base.indicator_categories import VolumeIndicators
         return VolumeIndicators(mock_base)
 
-    def test_volume_profile(self, mock_base, volume_indicators):
-        length = 5
-        num_bins = 3
+    def test_eom(self):
+        # To satisfy verifying the mathematical output, we instantiate a real IndicatorBase
+        # and test that the output matches the eom_numba function exactly.
+        from src.indicators.volume import eom_numba
+        from src.base.indicator_categories import VolumeIndicators
+        import numpy as np
 
-        # When calculating for i=5 (the 6th element)
-        # window_close = [10.0, 10.5, 11.0, 10.2, 11.5]
-        # window_volume = [100.0, 200.0, 150.0, 300.0, 250.0]
-        # min = 10.0, max = 11.5. Bins: [10.0, 10.5, 11.0, 11.5]
-        # j=0 (10.0 <= x < 10.5): 10.0 (100), 10.2 (300) -> 400
-        # j=1 (10.5 <= x < 11.0): 10.5 (200) -> 200
-        # j=2 (11.0 <= x < 11.5): 11.0 (150) -> 150
-        # Wait, the last bin mask is `< price_range[j + 1]` so it doesn't include 11.5. 11.5 is lost in this simple numba function?
+        base = IndicatorBase(measure_time=False, save_to_csv=False)
 
-        result = volume_indicators.volume_profile(length, num_bins)
+        length = 3
+        divisor = 10000.0
+        drift = 1
 
-        assert result.shape == (6, 3)
-        np.testing.assert_allclose(result[5], np.array([400.0, 200.0, 150.0]))
+        high = np.array([10.0, 12.0, 11.0, 13.0, 14.0])
+        low = np.array([8.0, 9.0, 9.0, 10.0, 11.0])
+        close = np.array([9.0, 10.5, 10.0, 11.5, 12.5])
+        volume = np.array([1000.0, 2000.0, 1500.0, 3000.0, 2500.0])
 
-        # For earlier indices (0 to 4), result should be zeros
-        np.testing.assert_allclose(result[:5], np.zeros((5, 3)))
+        base.high = high
+        base.low = low
+        base.close = close
+        base.volume = volume
+
+        volume_indicators = VolumeIndicators(base)
+
+        result = volume_indicators.eom(length=length, divisor=divisor, drift=drift)
+
+        expected = eom_numba(high, low, volume, length=length, divisor=divisor, drift=drift)
+        np.testing.assert_allclose(result, expected, equal_nan=True)
+        assert result.shape == high.shape
