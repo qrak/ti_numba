@@ -118,6 +118,28 @@ class TestVolumeIndicators:
         base = MagicMock(spec=IndicatorBase)
         base.close = np.array([10.0, 11.0, 12.0, 13.0, 14.0])
         base.volume = np.array([100.0, 110.0, 120.0, 130.0, 140.0])
+        class DummyBase:
+            def __init__(self):
+                self.high = np.array([10.0, 11.0, 12.0, 11.0, 10.0, 12.0, 13.0, 15.0, 14.0, 13.0, 15.0])
+                self.low = np.array([8.0, 9.0, 10.0, 9.0, 8.0, 10.0, 11.0, 13.0, 12.0, 11.0, 13.0])
+                self.close = np.array([9.0, 10.0, 11.0, 10.0, 9.0, 11.0, 12.0, 14.0, 13.0, 12.0, 14.0])
+                self.volume = np.array([100.0, 200.0, 300.0, 200.0, 100.0, 200.0, 300.0, 400.0, 300.0, 200.0, 300.0])
+
+            def calculate_indicator(self, func, *args, **kwargs):
+                return func(*args)
+
+        dummy = DummyBase()
+        dummy._base = dummy
+        return dummy
+
+class TestVolumeIndicators:
+    @pytest.fixture
+    def mock_base(self):
+        base = MagicMock(spec=IndicatorBase)
+        base.close = np.array([1.0, 2.0, 3.0])
+        base.high = np.array([1.2, 2.2, 3.2])
+        base.low = np.array([0.8, 1.8, 2.8])
+        base.volume = np.array([100.0, 200.0, 300.0])
         return base
 
     @pytest.fixture
@@ -148,3 +170,36 @@ class TestVolumeIndicators:
                 mock_base.close, mock_base.volume, length
             )
             np.testing.assert_array_equal(result, mock_force_index_numba.return_value)
+        from src.base.indicator_categories import VolumeIndicators
+        return VolumeIndicators(mock_base)
+
+    def test_eom(self):
+        # To satisfy verifying the mathematical output, we instantiate a real IndicatorBase
+        # and test that the output matches the eom_numba function exactly.
+        from src.indicators.volume import eom_numba
+        from src.base.indicator_categories import VolumeIndicators
+        import numpy as np
+
+        base = IndicatorBase(measure_time=False, save_to_csv=False)
+
+        length = 3
+        divisor = 10000.0
+        drift = 1
+
+        high = np.array([10.0, 12.0, 11.0, 13.0, 14.0])
+        low = np.array([8.0, 9.0, 9.0, 10.0, 11.0])
+        close = np.array([9.0, 10.5, 10.0, 11.5, 12.5])
+        volume = np.array([1000.0, 2000.0, 1500.0, 3000.0, 2500.0])
+
+        base.high = high
+        base.low = low
+        base.close = close
+        base.volume = volume
+
+        volume_indicators = VolumeIndicators(base)
+
+        result = volume_indicators.eom(length=length, divisor=divisor, drift=drift)
+
+        expected = eom_numba(high, low, volume, length=length, divisor=divisor, drift=drift)
+        np.testing.assert_allclose(result, expected, equal_nan=True)
+        assert result.shape == high.shape

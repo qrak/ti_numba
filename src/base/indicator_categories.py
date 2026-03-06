@@ -608,14 +608,14 @@ class VolatilityIndicators(IndicatorCategory['VolatilityIndicators']):
 
 
 class VolumeIndicators(IndicatorCategory['VolumeIndicators']):
-    def cci(self, length: int = 14, c: float = 0.015) -> np.ndarray:
+    def cci(self, length: int = 14, constant: float = 0.015) -> np.ndarray:
         return self._base.calculate_indicator(
             cci_numba,
             self.high,
             self.low,
             self.close,
             length,
-            c,
+            constant,
             required_length=length)
 
     def mfi(self, length: int = 14, drift: int = 1) -> np.ndarray:
