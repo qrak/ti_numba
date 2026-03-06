@@ -115,6 +115,13 @@ class TestMomentumIndicators:
 class TestVolumeIndicators:
     @pytest.fixture
     def mock_base(self):
+        class DummyBase:
+            def __init__(self):
+                self.n = 25
+                self.close = np.full(self.n, 12.0)
+                self.high = np.full(self.n, 12.0)
+                self.low = np.full(self.n, 8.0)
+                self.volume = np.full(self.n, 1e5)
         base = MagicMock(spec=IndicatorBase)
         base.close = np.array([10.0, 11.0, 12.0, 13.0, 14.0])
         base.volume = np.array([100.0, 110.0, 120.0, 130.0, 140.0])
@@ -128,6 +135,27 @@ class TestVolumeIndicators:
             def calculate_indicator(self, func, *args, **kwargs):
                 return func(*args)
 
+        return DummyBase()
+
+    @pytest.fixture
+    def volume_indicators(self, mock_base):
+        from src.base.indicator_categories import VolumeIndicators
+        return VolumeIndicators(mock_base)
+
+    def test_chaikin_money_flow_mathematics(self, mock_base, volume_indicators):
+        # A bullish setup where close is at high, should yield CMF of 1.0 after the window
+        length = 5
+        result = volume_indicators.chaikin_money_flow(length=length)
+
+        # Verify shape
+        assert result.shape == (mock_base.n,)
+
+        # Verify warm-up NaNs
+        assert np.isnan(result[:length - 1]).all()
+
+        # Verify actual mathematical output
+        valid = result[~np.isnan(result)]
+        np.testing.assert_allclose(valid, 1.0)
         dummy = DummyBase()
         dummy._base = dummy
         return dummy
