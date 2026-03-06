@@ -3,14 +3,13 @@ from unittest.mock import MagicMock
 import numpy as np
 
 from src.base.indicator_base import IndicatorBase
-from src.base.indicator_categories import OverlapIndicators, MomentumIndicators
+from src.base.indicator_categories import OverlapIndicators, MomentumIndicators, VolumeIndicators
 from src.indicators.overlap.overlap_indicators import ema_numba, sma_numba, ewma_numba
 
 class TestOverlapIndicators:
     @pytest.fixture
     def mock_base(self):
         base = MagicMock(spec=IndicatorBase)
-        # Fix: don't mock on the class MagicMock itself
         base.close = np.array([1.0, 2.0, 3.0])
         return base
 
