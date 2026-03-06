@@ -119,21 +119,40 @@ class TestPVT:
 
     def test_known_value(self):
         """
-        PVT is cumulative: pv += roc * volume where roc = (close[i] - close[i-1]) / close[i-1].
+        PVT is cumulative: pv += roc * volume where roc = (close[i] - close[i-drift]) / close[i-drift].
+        For length=1, drift=1:
+        i=0: roc = (close[0]-close[-1])/close[-1] (Numba behavior for -1 index)
+        To be safe and deterministic, let's test from length > 1 or i >= drift.
         """
-        close  = np.array([10.0, 12.0, 9.0], dtype=np.float64)
-        volume = np.array([100.0, 200.0, 300.0], dtype=np.float64)
-        result = pvt_numba(close, volume, length=1, drift=1)
+        close  = np.array([10.0, 10.0, 12.0, 9.0], dtype=np.float64)
+        volume = np.array([100.0, 100.0, 200.0, 300.0], dtype=np.float64)
+        # length=2 means pvt[0] is NaN, calculation starts at i=1
+        result = pvt_numba(close, volume, length=2, drift=1)
 
-        # i=0: pv = 0 + (10-10)/10 * 100 = 0 ... but actually loop starts at length-1=0
-        # pvt[0] = 0 + (close[0]-close[-1])... hmm, drift=1 so i=0: i-drift=-1 → wrap? No,
-        # loop is range(length-1, n): length=1 → range(0, 3)
-        # i=0: roc=(close[0]-close[0-1])/close[0-1] but i-drift=0-1=-1 → close[-1]=close[2]=9
-        # This is a known edge: pvt starts accumulating from length-1=0.
-        # Just verify the cumulative property holds in a drift=1 scenario:
-        assert not np.isnan(result).all()
-        # The result should be finite for all valid entries
-        assert np.isfinite(result[~np.isnan(result)]).all()
+        # i=1: roc = (10-10)/10 = 0; pv = 0 + 0*100 = 0; pvt[1] = 0
+        # i=2: roc = (12-10)/10 = 0.2; pv = 0 + 0.2*200 = 40; pvt[2] = 40
+        # i=3: roc = (9-12)/12 = -0.25; pv = 40 + (-0.25)*300 = 40 - 75 = -35; pvt[3] = -35
+
+        expected = np.array([np.nan, 0.0, 40.0, -35.0])
+        np.testing.assert_allclose(result, expected, equal_nan=True)
+
+    def test_constant_price(self):
+        n = 10
+        close = np.full(n, 50.0)
+        volume = np.random.uniform(100, 1000, n)
+        result = pvt_numba(close, volume, length=1)
+        # roc will be 0 everywhere (except potentially i=0 if close[-1] != 50, but here it is)
+        # We expect 0 after warmup
+        valid = result[~np.isnan(result)]
+        np.testing.assert_allclose(valid, 0.0, atol=1e-10)
+
+    def test_zero_volume(self):
+        n = 10
+        close = np.linspace(100, 110, n)
+        volume = np.zeros(n)
+        result = pvt_numba(close, volume, length=1)
+        valid = result[~np.isnan(result)]
+        np.testing.assert_allclose(valid, 0.0, atol=1e-10)
 
     def test_rising_market_positive_pvt(self):
         n = 20
