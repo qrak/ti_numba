@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import numpy as np
 
 from src.base.indicator_base import IndicatorBase
-from src.base.indicator_categories import OverlapIndicators, MomentumIndicators
+from src.base.indicator_categories import OverlapIndicators, MomentumIndicators, VolumeIndicators
 from src.indicators.overlap.overlap_indicators import ema_numba, sma_numba, ewma_numba
 
 class TestOverlapIndicators:
@@ -112,3 +112,39 @@ class TestMomentumIndicators:
             period_d,
             required_length=3
         )
+
+class TestVolumeIndicators:
+    @pytest.fixture
+    def mock_base(self):
+        base = MagicMock(spec=IndicatorBase)
+        base.close = np.array([1.0, 2.0, 3.0])
+        base.high = np.array([1.2, 2.2, 3.2])
+        base.low = np.array([0.8, 1.8, 2.8])
+        base.volume = np.array([100.0, 200.0, 300.0])
+        return base
+
+    @pytest.fixture
+    def volume_indicators(self, mock_base):
+        return VolumeIndicators(mock_base)
+
+    def test_twap(self, mock_base, volume_indicators):
+        length = 2
+
+        # In actual execution, self._base.calculate_indicator calls the function.
+        # So we can set side_effect to actually call the underlying function
+        def mock_calculate_indicator(func, *args, **kwargs):
+            return func(*args)
+
+        mock_base.calculate_indicator.side_effect = mock_calculate_indicator
+
+        result = volume_indicators.twap(length)
+
+        # Verify mathematical output against known values:
+        # high = [1.2, 2.2, 3.2], low = [0.8, 1.8, 2.8], close = [1.0, 2.0, 3.0]
+        # TP = (high + low + close) / 3 = [1.0, 2.0, 3.0]
+        # length = 2
+        # i=0: nan
+        # i=1: (1.0 + 2.0) / 2 = 1.5
+        # i=2: (2.0 + 3.0) / 2 = 2.5
+        expected = np.array([np.nan, 1.5, 2.5])
+        np.testing.assert_allclose(result, expected, equal_nan=True)
