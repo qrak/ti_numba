@@ -118,18 +118,25 @@ def _auto_dom_imp(source, minlen, maxlen, avelen):
 def kurtosis_numba(arr, length):
     n = len(arr)
     kurtosis_values = np.full(n, np.nan)
+
+    if length < 4:
+        return kurtosis_values
+
     length_reciprocal = 1.0 / length
 
     for i in range(length - 1, n):
         window = arr[i - length + 1:i + 1]
         mean = np.sum(window) * length_reciprocal
-        variance = np.sum((window - mean) ** 2) * length_reciprocal
+        variance = np.sum((window - mean) ** 2) / (length - 1)
         std_dev = np.sqrt(variance)
+
+        if std_dev == 0:
+            continue
 
         kurtosis_sum = np.sum(((window - mean) / std_dev) ** 4)
         kurtosis_constant = (length * (length + 1)) / ((length - 1) * (length - 2) * (length - 3))
         kurtosis = kurtosis_constant * kurtosis_sum
-        kurtosis -= 3 * (length - 1) / ((length - 2) * (length - 3))
+        kurtosis -= 3 * ((length - 1) ** 2) / ((length - 2) * (length - 3))
 
         kurtosis_values[i] = kurtosis
 
@@ -140,13 +147,19 @@ def skew_numba(close, length=30):
     n = len(close)
     skew_values = np.full(n, np.nan)
 
+    if length < 3:
+        return skew_values
+
     for i in range(length - 1, n):
         window = close[i - length + 1:i + 1]
         mean = np.sum(window) / length
-        std_dev = np.sqrt(np.sum((window - mean) ** 2) / length)
+        std_dev = np.sqrt(np.sum((window - mean) ** 2) / (length - 1))
+
+        if std_dev == 0:
+            continue
 
         skew_sum = np.sum(((window - mean) / std_dev) ** 3)
-        skew_values[i] = ((length * (length + 1)) / ((length - 1) * (length - 2) * (length - 3))) * skew_sum
+        skew_values[i] = (length / ((length - 1) * (length - 2))) * skew_sum
 
     return skew_values
 
@@ -210,13 +223,21 @@ def quantile_numba(close, length=30, q=0.5):
 def entropy_numba(close, length=10, base=2.0):
     n = len(close)
     entropy = np.full(n, np.nan)
+
+    if length > n:
+        return entropy
+
     log_base = np.log(base)  # precompute log base
 
+    total = np.sum(close[:length])
+
     for i in range(length, n):
-        total = np.sum(close[i - length:i])
-        p = close[i - length:i] / total
-        ent = -np.sum(p * np.log(p) / log_base)
-        entropy[i] = ent
+        if total != 0:
+            p = close[i - length:i] / total
+            ent = -np.sum(p * np.log(p) / log_base)
+            entropy[i] = ent
+
+        total += close[i] - close[i - length]
 
     return entropy
 
