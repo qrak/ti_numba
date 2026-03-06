@@ -3,14 +3,13 @@ from unittest.mock import MagicMock
 import numpy as np
 
 from src.base.indicator_base import IndicatorBase
-from src.base.indicator_categories import OverlapIndicators, MomentumIndicators
+from src.base.indicator_categories import OverlapIndicators, MomentumIndicators, VolumeIndicators
 from src.indicators.overlap.overlap_indicators import ema_numba, sma_numba, ewma_numba
 
 class TestOverlapIndicators:
     @pytest.fixture
     def mock_base(self):
         base = MagicMock(spec=IndicatorBase)
-        # Fix: don't mock on the class MagicMock itself
         base.close = np.array([1.0, 2.0, 3.0])
         return base
 
@@ -112,3 +111,40 @@ class TestMomentumIndicators:
             period_d,
             required_length=3
         )
+
+class TestVolumeIndicators:
+    @pytest.fixture
+    def mock_base(self):
+        base = MagicMock(spec=IndicatorBase)
+        # Mock calculate_indicator to just call the underlying function
+        def mock_calc(func, *args, **kwargs):
+            return func(*args)
+        base.calculate_indicator.side_effect = mock_calc
+        base.close = np.array([10.0, 10.5, 11.0, 10.2, 11.5, 12.0])
+        base.volume = np.array([100.0, 200.0, 150.0, 300.0, 250.0, 100.0])
+        return base
+
+    @pytest.fixture
+    def volume_indicators(self, mock_base):
+        return VolumeIndicators(mock_base)
+
+    def test_volume_profile(self, mock_base, volume_indicators):
+        length = 5
+        num_bins = 3
+
+        # When calculating for i=5 (the 6th element)
+        # window_close = [10.0, 10.5, 11.0, 10.2, 11.5]
+        # window_volume = [100.0, 200.0, 150.0, 300.0, 250.0]
+        # min = 10.0, max = 11.5. Bins: [10.0, 10.5, 11.0, 11.5]
+        # j=0 (10.0 <= x < 10.5): 10.0 (100), 10.2 (300) -> 400
+        # j=1 (10.5 <= x < 11.0): 10.5 (200) -> 200
+        # j=2 (11.0 <= x < 11.5): 11.0 (150) -> 150
+        # Wait, the last bin mask is `< price_range[j + 1]` so it doesn't include 11.5. 11.5 is lost in this simple numba function?
+
+        result = volume_indicators.volume_profile(length, num_bins)
+
+        assert result.shape == (6, 3)
+        np.testing.assert_allclose(result[5], np.array([400.0, 200.0, 150.0]))
+
+        # For earlier indices (0 to 4), result should be zeros
+        np.testing.assert_allclose(result[:5], np.zeros((5, 3)))
