@@ -198,6 +198,27 @@ class TestVolumeIndicators:
     def volume_indicators(self, mock_base):
         return VolumeIndicators(mock_base)
 
+    def test_twap(self, mock_base, volume_indicators):
+        length = 2
+
+        # In actual execution, self._base.calculate_indicator calls the function.
+        # So we can set side_effect to actually call the underlying function
+        def mock_calculate_indicator(func, *args, **kwargs):
+            return func(*args)
+
+        mock_base.calculate_indicator.side_effect = mock_calculate_indicator
+
+        result = volume_indicators.twap(length)
+
+        # Verify mathematical output against known values:
+        # high = [1.2, 2.2, 3.2], low = [0.8, 1.8, 2.8], close = [1.0, 2.0, 3.0]
+        # TP = (high + low + close) / 3 = [1.0, 2.0, 3.0]
+        # length = 2
+        # i=0: nan
+        # i=1: (1.0 + 2.0) / 2 = 1.5
+        # i=2: (2.0 + 3.0) / 2 = 2.5
+        expected = np.array([np.nan, 1.5, 2.5])
+        np.testing.assert_allclose(result, expected, equal_nan=True)
     @patch('src.base.indicator_categories.force_index_numba')
     def test_force_index(self, mock_force_index_numba, mock_base, volume_indicators):
         length = 2
