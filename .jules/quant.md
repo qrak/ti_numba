@@ -12,3 +12,7 @@ To verify lookahead bias, edge cases, and performance regressions:
 ## 2026-03-05 - [Skewness & Kurtosis ZeroDivisionError & Formula Corrections]
 **Learning:** `skew_numba` and `kurtosis_numba` contained a fatal `ZeroDivisionError` vulnerability when `std_dev` was 0, and threw `ZeroDivisionError` when standard Pandas formulas yielded divisors like `(length-1)*(length-2)*(length-3)` with small windows (`length < 4` for kurtosis, `length < 3` for skewness). Additionally, they incorrectly used standard deviations calculated with 0 degrees of freedom, rather than `ddof=1` sample standard deviations used by pandas and scipy. `entropy_numba` calculated rolling sum with a $O(N \cdot L)$ lookup instead of $O(N)$ running sum.
 **Action:** Guard any division by zero using `if std_dev == 0: continue` and `if length < 4: return ...`. Calculate standard deviations within Numba statistical loops using `ddof=1`. Use running sums for properties like `entropy` which rely on rolling totals.
+
+## 2026-03-07 - [O(N) Optimization in Volume Indicators]
+**Learning:** Found multiple instances where volume indicators (`eom_numba`, `twap_numba`, `average_quote_volume_numba`) were recalculating `np.mean` and `np.sum` on rolling array slices inside the main calculation loop, causing an O(N*K) algorithmic bottleneck.
+**Action:** Replaced these inner slice calculations with O(1) rolling sum variables (e.g. `sum += new_val - old_val`). This reduces the overall time complexity of the indicator functions to strictly O(N), maximizing Numba loop execution speeds.

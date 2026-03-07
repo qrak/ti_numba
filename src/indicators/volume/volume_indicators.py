@@ -151,8 +151,16 @@ def eom_numba(high, low, volume, length=14, divisor=10000.0, drift=1):
             box_ratio = (volume[i] / divisor) / hl_range
             eom[i] = distance / box_ratio if box_ratio != 0 else 0
 
-    for i in range(length - 1, n):
-        eom_sma[i] = np.mean(eom[i - length + 1:i + 1])
+    if n >= length + drift:
+        window_sum = 0.0
+        for i in range(drift, length + drift):
+            window_sum += eom[i]
+
+        eom_sma[length + drift - 1] = window_sum / length
+
+        for i in range(length + drift, n):
+            window_sum += eom[i] - eom[i - length]
+            eom_sma[i] = window_sum / length
 
     return eom_sma
 
@@ -205,13 +213,20 @@ def twap_numba(high, low, close, length):
     n = len(high)
     twap = np.full(n, np.nan)
 
-    for i in range(length - 1, n):
-        tp_sum = 0
+    if n < length:
+        return twap
 
-        for j in range(i - length + 1, i + 1):
-            tp = (high[j] + low[j] + close[j]) / 3
-            tp_sum += tp
+    tp_sum = 0.0
+    for i in range(length):
+        tp = (high[i] + low[i] + close[i]) / 3
+        tp_sum += tp
 
+    twap[length - 1] = tp_sum / length
+
+    for i in range(length, n):
+        new_tp = (high[i] + low[i] + close[i]) / 3
+        old_tp = (high[i - length] + low[i - length] + close[i - length]) / 3
+        tp_sum += new_tp - old_tp
         twap[i] = tp_sum / length
 
     return twap
@@ -220,9 +235,19 @@ def twap_numba(high, low, close, length):
 def average_quote_volume_numba(close_prices, volumes, window_size):
     n = len(close_prices)
     quote_volumes = np.full(n, np.nan)
-    for i in range(window_size - 1, n):
-        average_close_price = np.mean(close_prices[i - window_size + 1:i + 1])
-        average_volume = np.mean(volumes[i - window_size + 1:i + 1])
-        quote_volumes[i] = average_close_price * average_volume
+
+    if n < window_size:
+        return quote_volumes
+
+    close_sum = np.sum(close_prices[:window_size])
+    vol_sum = np.sum(volumes[:window_size])
+
+    quote_volumes[window_size - 1] = (close_sum / window_size) * (vol_sum / window_size)
+
+    for i in range(window_size, n):
+        close_sum += close_prices[i] - close_prices[i - window_size]
+        vol_sum += volumes[i] - volumes[i - window_size]
+        quote_volumes[i] = (close_sum / window_size) * (vol_sum / window_size)
+
     return quote_volumes
 
