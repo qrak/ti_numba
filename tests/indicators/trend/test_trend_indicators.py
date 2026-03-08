@@ -118,4 +118,4 @@ def test_pfe_numba(ohlcv_data):
     pfe = pfe_numba(close, n, m)
 
     assert pfe.shape == close.shape
-    assert np.isnan(pfe[:n - 1]).all()
+    assert np.isnan(pfe[:n]).all()
