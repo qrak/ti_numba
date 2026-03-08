@@ -218,15 +218,31 @@ def pfe_numba(close, n, m):
     p = np.full(length, np.nan)
     pfe = np.full(length, np.nan)
 
-    # Calculate differences manually instead of using np.diff
-    for i in range(n - 1, length):
-        # Calculate sum of squared differences manually
-        sum_square_diffs = 0.0
-        for j in range(i - n + 1, i):
-            diff = close[j + 1] - close[j]
-            sum_square_diffs += diff * diff
+    if length <= n:
+        return pfe
 
-        if sum_square_diffs > 0:  # Avoid division by zero
+    diffs_sq = np.empty(length)
+    diffs_sq[0] = 0.0
+    for i in range(1, length):
+        diff = close[i] - close[i - 1]
+        diffs_sq[i] = diff * diff
+
+    # Sum of squared differences over n periods
+    # Start at i = n to avoid lookahead bias from close[i - n] (i.e. close[-1])
+    sum_square_diffs = np.sum(diffs_sq[2:n+1])
+
+    if sum_square_diffs > 0:
+        term1 = np.sqrt((close[n] - close[0]) ** 2 + n ** 2)
+        pi = 100 * term1 / np.sqrt(sum_square_diffs)
+        if close[n] < close[n - 1]:
+            pi = -pi
+        p[n] = pi
+
+    for i in range(n + 1, length):
+        sum_square_diffs += diffs_sq[i]
+        sum_square_diffs -= diffs_sq[i - n + 1]
+
+        if sum_square_diffs > 0:
             term1 = np.sqrt((close[i] - close[i - n]) ** 2 + n ** 2)
             pi = 100 * term1 / np.sqrt(sum_square_diffs)
             if close[i] < close[i - 1]:
@@ -235,9 +251,9 @@ def pfe_numba(close, n, m):
 
     # Calculate EMA of p
     multiplier = 2 / (m + 1)
-    pfe[n - 1:] = p[n - 1:]  # Copy initial values
+    pfe[n:] = p[n:]  # Copy initial values
 
-    for i in range(n + m - 1, length):
+    for i in range(n + m, length):
         pfe[i] = ((p[i] - pfe[i - 1]) * multiplier) + pfe[i - 1]
 
     return pfe
