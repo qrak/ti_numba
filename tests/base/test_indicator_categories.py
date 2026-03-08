@@ -139,6 +139,10 @@ class TestMomentumIndicators:
 class TestVolumeIndicators:
     @pytest.fixture
     def mock_base(self):
+        base = MagicMock(spec=IndicatorBase)
+        base.high = np.array([1.2, 2.2, 3.2])
+        base.low = np.array([0.8, 1.8, 2.8])
+        base.close = np.array([1.0, 2.0, 3.0])
         class DummyBase:
             def __init__(self):
                 self.n = 25
@@ -198,6 +202,19 @@ class TestVolumeIndicators:
     def volume_indicators(self, mock_base):
         return VolumeIndicators(mock_base)
 
+    def test_rolling_vwap(self, mock_base, volume_indicators):
+        from src.indicators.volume.volume_indicators import rolling_vwap_numba
+        length = 14
+        volume_indicators.rolling_vwap(length)
+        mock_base.calculate_indicator.assert_called_once_with(
+            rolling_vwap_numba,
+            mock_base.high,
+            mock_base.low,
+            mock_base.close,
+            mock_base.volume,
+            length,
+            required_length=length
+        )
     def test_twap(self, mock_base, volume_indicators):
         length = 2
 
