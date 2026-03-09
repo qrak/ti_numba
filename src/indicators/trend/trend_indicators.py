@@ -195,15 +195,22 @@ def vortex_indicator_numba(high, low, close, length):
     vi_plus = np.full(n, np.nan)
     vi_minus = np.full(n, np.nan)
 
+    if n < length:
+        return vi_plus, vi_minus
+
     for i in range(1, n):
         tr[i] = max(high[i] - low[i], abs(high[i] - close[i - 1]), abs(low[i] - close[i - 1]))
         vmp[i] = abs(high[i] - low[i - 1])
         vmm[i] = abs(low[i] - high[i - 1])
 
+    tr_sum = np.sum(tr[1:length])
+    vmp_sum = np.sum(vmp[1:length])
+    vmm_sum = np.sum(vmm[1:length])
+
     for i in range(length, n):
-        tr_sum = np.sum(tr[i - length + 1:i + 1])
-        vmp_sum = np.sum(vmp[i - length + 1:i + 1])
-        vmm_sum = np.sum(vmm[i - length + 1:i + 1])
+        tr_sum += tr[i] - tr[i - length]
+        vmp_sum += vmp[i] - vmp[i - length]
+        vmm_sum += vmm[i] - vmm[i - length]
 
         if tr_sum != 0:
             vi_plus[i] = vmp_sum / tr_sum
