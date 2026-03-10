@@ -22,3 +22,6 @@ To verify lookahead bias, edge cases, and performance regressions:
 ## 2025-02-28 - Vortex Indicator O(N*K) Slice Bottleneck Reduced
 **Learning:** Found an O(N*K) algorithmic inefficiency in `vortex_indicator_numba` (`src/indicators/trend/trend_indicators.py`) where `np.sum(tr[i - length + 1:i + 1])` (and related slices) was recalculated on every iteration inside a rolling window loop.
 **Action:** Replaced the array slicing with an O(N) running sum, maintaining the same window logic. A guard clause (`if n < length:`) was added to prevent out-of-bounds initialization on the running sum state.
+## 2024-03-10 - [O(N) Optimization for Rolling Variance]
+**Learning:** Computing standard deviation with `np.mean()` and `np.sum(...)` on array slices within a loop leads to $O(N \cdot L)$ bottleneck. This can be strictly converted to $O(N)$ by keeping running totals of `window_sum` and `window_sum_sq`, then using the formula `variance = (window_sum_sq / length) - (mean * mean)`. It is absolutely critical to wrap the resulting variance in `max(0.0, variance)` before passing it to `np.sqrt()` because floating point precision issues can sometimes result in minuscule negative numbers.
+**Action:** Always search for slice-based operations like `np.sum(data[i-len:i])` inside `for` loops in Numba code, and refactor them to use running calculations.

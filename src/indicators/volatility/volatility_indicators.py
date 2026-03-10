@@ -45,14 +45,46 @@ def atr_numba(high, low, close, length=14, mamode='rma', percent=False):
 @njit(cache=True)
 def bollinger_bands_numba(close, length, num_std_dev):
     n = len(close)
-    upper_band = np.full(n, np.nan)
-    lower_band = np.full(n, np.nan)
-    middle_band = np.full(n, np.nan)
+    upper_band = np.empty(n, dtype=np.float64)
+    lower_band = np.empty(n, dtype=np.float64)
+    middle_band = np.empty(n, dtype=np.float64)
 
-    for i in range(length - 1, n):
-        window = close[i - length + 1:i + 1]
-        mean = np.mean(window)
-        std = np.sqrt(np.sum((window - mean) ** 2) / (len(window) - 0))
+    upper_band[:length-1] = np.nan
+    lower_band[:length-1] = np.nan
+    middle_band[:length-1] = np.nan
+
+    if n < length:
+        return upper_band, middle_band, lower_band
+
+    window_sum = 0.0
+    window_sum_sq = 0.0
+
+    # Initialize the first window
+    for i in range(length):
+        val = close[i]
+        window_sum += val
+        window_sum_sq += val * val
+
+    mean = window_sum / length
+    variance = (window_sum_sq / length) - (mean * mean)
+    std = np.sqrt(max(0.0, variance))
+
+    upper_band[length - 1] = mean + (std * num_std_dev)
+    middle_band[length - 1] = mean
+    lower_band[length - 1] = mean - (std * num_std_dev)
+
+    # Rolling window update
+    for i in range(length, n):
+        old_val = close[i - length]
+        new_val = close[i]
+
+        window_sum += new_val - old_val
+        window_sum_sq += (new_val * new_val) - (old_val * old_val)
+
+        mean = window_sum / length
+        variance = (window_sum_sq / length) - (mean * mean)
+        std = np.sqrt(max(0.0, variance))
+
         upper_band[i] = mean + (std * num_std_dev)
         middle_band[i] = mean
         lower_band[i] = mean - (std * num_std_dev)
