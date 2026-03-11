@@ -185,9 +185,27 @@ def rmi_numba(close, length, momentum_length):
     up = np.maximum(momentum, 0)
     down = np.maximum(-momentum, 0)
 
-    for i in range(length - 1, len(momentum)):
-        avg_up = np.mean(up[i - length + 1:i + 1])
-        avg_down = np.mean(down[i - length + 1:i + 1])
+    if len(momentum) < length:
+        return rmi
+
+    sum_up = np.sum(up[:length])
+    sum_down = np.sum(down[:length])
+
+    avg_up = sum_up / length
+    avg_down = sum_down / length
+
+    if avg_down == 0:
+        rmi[length - 1 + momentum_length] = 100
+    else:
+        rs = avg_up / avg_down
+        rmi[length - 1 + momentum_length] = 100 - (100 / (1 + rs))
+
+    for i in range(length, len(momentum)):
+        sum_up += up[i] - up[i - length]
+        sum_down += down[i] - down[i - length]
+
+        avg_up = sum_up / length
+        avg_down = sum_down / length
 
         if avg_down == 0:
             rmi[i + momentum_length] = 100
@@ -287,13 +305,32 @@ def uo_numba(high, low, close, fast, medium, slow, fast_w, medium_w, slow_w, dri
     def calc_average(bp_sum, tr_sum):
         return bp_sum / tr_sum if tr_sum != 0 else 0
 
-    for i in range(slow + drift - 1, n):
-        bp_sum_fast = np.sum(bp[i - fast + 1:i + 1])
-        tr_sum_fast = np.sum(tr[i - fast + 1:i + 1])
-        bp_sum_medium = np.sum(bp[i - medium + 1:i + 1])
-        tr_sum_medium = np.sum(tr[i - medium + 1:i + 1])
-        bp_sum_slow = np.sum(bp[i - slow + 1:i + 1])
-        tr_sum_slow = np.sum(tr[i - slow + 1:i + 1])
+    if n < slow + drift:
+        return uo
+
+    start_idx = slow + drift - 1
+
+    bp_sum_fast = np.sum(bp[start_idx - fast + 1:start_idx + 1])
+    tr_sum_fast = np.sum(tr[start_idx - fast + 1:start_idx + 1])
+    bp_sum_medium = np.sum(bp[start_idx - medium + 1:start_idx + 1])
+    tr_sum_medium = np.sum(tr[start_idx - medium + 1:start_idx + 1])
+    bp_sum_slow = np.sum(bp[start_idx - slow + 1:start_idx + 1])
+    tr_sum_slow = np.sum(tr[start_idx - slow + 1:start_idx + 1])
+
+    avg_fast = calc_average(bp_sum_fast, tr_sum_fast)
+    avg_medium = calc_average(bp_sum_medium, tr_sum_medium)
+    avg_slow = calc_average(bp_sum_slow, tr_sum_slow)
+
+    uo[start_idx] = 100 * ((avg_fast * fast_w) + (avg_medium * medium_w) + (avg_slow * slow_w)) / (
+            fast_w + medium_w + slow_w)
+
+    for i in range(start_idx + 1, n):
+        bp_sum_fast += bp[i] - bp[i - fast]
+        tr_sum_fast += tr[i] - tr[i - fast]
+        bp_sum_medium += bp[i] - bp[i - medium]
+        tr_sum_medium += tr[i] - tr[i - medium]
+        bp_sum_slow += bp[i] - bp[i - slow]
+        tr_sum_slow += tr[i] - tr[i - slow]
 
         avg_fast = calc_average(bp_sum_fast, tr_sum_fast)
         avg_medium = calc_average(bp_sum_medium, tr_sum_medium)
