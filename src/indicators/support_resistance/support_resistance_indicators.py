@@ -164,38 +164,79 @@ def floating_levels_numba(high: np.ndarray, low: np.ndarray, close: np.ndarray,
 
 @njit(cache=True)
 def fibonacci_bollinger_bands_numba(src, volume, length, mult):
-    vwma_values = np.empty_like(src)
-    stdev_values = np.empty_like(src)
-    basis = np.empty_like(src)
-    dev = np.empty_like(src)
-    upper_bands = np.empty((6, len(src)))
-    lower_bands = np.empty((6, len(src)))
-    fib_levels = np.array([0.236, 0.382, 0.5, 0.618, 0.764, 1.0])
+    n = len(src)
+    vwma_values = np.empty(n, dtype=np.float64)
+    stdev_values = np.empty(n, dtype=np.float64)
+    basis = np.empty(n, dtype=np.float64)
+    dev = np.empty(n, dtype=np.float64)
+    upper_bands = np.empty((6, n), dtype=np.float64)
+    lower_bands = np.empty((6, n), dtype=np.float64)
+    fib_levels = np.array([0.236, 0.382, 0.5, 0.618, 0.764, 1.0], dtype=np.float64)
 
-    for i in range(len(src)):
-        if i < length:
-            vwma_values[i] = np.nan
-            stdev_values[i] = np.nan
-            basis[i] = np.nan
-            dev[i] = np.nan
-            for j in range(6):
-                upper_bands[j, i] = np.nan
-                lower_bands[j, i] = np.nan
-        else:
-            sum_pv = np.sum(src[i - length + 1:i + 1] * volume[i - length + 1:i + 1])
-            sum_v = np.sum(volume[i - length + 1:i + 1])
-            vwma_values[i] = sum_pv / sum_v if sum_v != 0 else np.nan
+    # Fill NaNs for the initial window
+    vwma_values[:length - 1] = np.nan
+    stdev_values[:length - 1] = np.nan
+    basis[:length - 1] = np.nan
+    dev[:length - 1] = np.nan
+    for j in range(6):
+        upper_bands[j, :length - 1] = np.nan
+        lower_bands[j, :length - 1] = np.nan
 
-            mean = np.mean(src[i - length + 1:i + 1])
-            variance = np.sum((src[i - length + 1:i + 1] - mean) ** 2) / length
-            stdev_values[i] = np.sqrt(variance)
+    if n < length:
+        return basis, upper_bands, lower_bands
 
-            basis[i] = vwma_values[i]
-            dev[i] = mult * stdev_values[i]
+    # Initialize running sums for the first complete window
+    sum_pv = 0.0
+    sum_v = 0.0
+    sum_src = 0.0
+    sum_src_sq = 0.0
 
+    for i in range(length):
+        pv = src[i] * volume[i]
+        sum_pv += pv
+        sum_v += volume[i]
+        sum_src += src[i]
+        sum_src_sq += src[i] ** 2
 
-            for j in range(6):
-                upper_bands[j, i] = basis[i] + (fib_levels[j] * dev[i])
-                lower_bands[j, i] = basis[i] - (fib_levels[j] * dev[i])
+    # Calculate for the first valid index (length - 1)
+    vwma_values[length - 1] = sum_pv / sum_v if sum_v != 0 else np.nan
+    mean = sum_src / length
+    variance = (sum_src_sq / length) - (mean * mean)
+    stdev_values[length - 1] = np.sqrt(max(0.0, variance))
+
+    basis[length - 1] = vwma_values[length - 1]
+    dev[length - 1] = mult * stdev_values[length - 1]
+
+    for j in range(6):
+        upper_bands[j, length - 1] = basis[length - 1] + (fib_levels[j] * dev[length - 1])
+        lower_bands[j, length - 1] = basis[length - 1] - (fib_levels[j] * dev[length - 1])
+
+    # O(N) rolling calculation for the rest
+    for i in range(length, n):
+        # Subtract outgoing value
+        old_idx = i - length
+        sum_pv -= src[old_idx] * volume[old_idx]
+        sum_v -= volume[old_idx]
+        sum_src -= src[old_idx]
+        sum_src_sq -= src[old_idx] ** 2
+
+        # Add incoming value
+        sum_pv += src[i] * volume[i]
+        sum_v += volume[i]
+        sum_src += src[i]
+        sum_src_sq += src[i] ** 2
+
+        # Calculate current values
+        vwma_values[i] = sum_pv / sum_v if sum_v != 0 else np.nan
+        mean = sum_src / length
+        variance = (sum_src_sq / length) - (mean * mean)
+        stdev_values[i] = np.sqrt(max(0.0, variance))
+
+        basis[i] = vwma_values[i]
+        dev[i] = mult * stdev_values[i]
+
+        for j in range(6):
+            upper_bands[j, i] = basis[i] + (fib_levels[j] * dev[i])
+            lower_bands[j, i] = basis[i] - (fib_levels[j] * dev[i])
 
     return basis, upper_bands, lower_bands

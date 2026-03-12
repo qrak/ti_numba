@@ -265,8 +265,8 @@ class TestFibonacciBollingerBands:
         basis, upper_bands, lower_bands = fibonacci_bollinger_bands_numba(
             ohlcv["close"], ohlcv["volume"], length=length, mult=2.0
         )
-        assert np.isnan(basis[:length]).all()
-        assert np.isnan(upper_bands[:, :length]).all()
+        assert np.isnan(basis[:length - 1]).all()
+        assert np.isnan(upper_bands[:, :length - 1]).all()
 
     def test_upper_above_basis(self, ohlcv):
         """All upper bands should be >= basis for mult > 0."""
