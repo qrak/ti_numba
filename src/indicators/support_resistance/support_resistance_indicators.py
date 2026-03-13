@@ -25,15 +25,21 @@ def support_resistance_numba_advanced(high, low, close, volume, length):
     volume_filter = np.full(n, False)
     rolling_avg_volume = np.full(n, np.nan)
 
-    for i in range(length, n):
-        rolling_avg_volume[i] = np.mean(volume[i - length:i])
+    if n >= length:
+        vol_sum = np.sum(volume[:length])
 
-        pivot_points[i] = (high[i - 1] + low[i - 1] + close[i - 1]) / 3
+        for i in range(length, n):
+            # FIXED: Converted slow slice mean to O(N) running sum
+            rolling_avg_volume[i] = vol_sum / length
 
-        r1[i] = (2 * pivot_points[i]) - low[i - 1]
-        s1[i] = (2 * pivot_points[i]) - high[i - 1]
+            pivot_points[i] = (high[i - 1] + low[i - 1] + close[i - 1]) / 3
 
-        volume_filter[i] = volume[i] > rolling_avg_volume[i]
+            r1[i] = (2 * pivot_points[i]) - low[i - 1]
+            s1[i] = (2 * pivot_points[i]) - high[i - 1]
+
+            volume_filter[i] = volume[i] > rolling_avg_volume[i]
+
+            vol_sum += volume[i] - volume[i - length]
 
     strong_support = np.where(volume_filter, s1, np.nan)
     strong_resistance = np.where(volume_filter, r1, np.nan)
@@ -60,32 +66,38 @@ def advanced_support_resistance_numba(high, low, close, volume, length=50, stren
     strong_support = np.full(n, np.nan)
     strong_resistance = np.full(n, np.nan)
 
-    for i in range(length, n):
-        rolling_avg_volume[i] = np.mean(volume[i - length:i])
-        pivot_points[i] = (high[i - 1] + low[i - 1] + close[i - 1]) / 3
+    if n >= length:
+        vol_sum = np.sum(volume[:length])
 
-        r1[i] = (2 * pivot_points[i]) - low[i - 1]
-        s1[i] = (2 * pivot_points[i]) - high[i - 1]
-        r2[i] = pivot_points[i] + (high[i - 1] - low[i - 1])
-        s2[i] = pivot_points[i] - (high[i - 1] - low[i - 1])
+        for i in range(length, n):
+            # FIXED: Converted slow slice mean to O(N) running sum
+            rolling_avg_volume[i] = vol_sum / length
+            pivot_points[i] = (high[i - 1] + low[i - 1] + close[i - 1]) / 3
 
-        volume_filter[i] = volume[i] > rolling_avg_volume[i]
+            r1[i] = (2 * pivot_points[i]) - low[i - 1]
+            s1[i] = (2 * pivot_points[i]) - high[i - 1]
+            r2[i] = pivot_points[i] + (high[i - 1] - low[i - 1])
+            s2[i] = pivot_points[i] - (high[i - 1] - low[i - 1])
 
-        if close[i] < s1[i]:
-            support_strength[i] = support_strength[i - 1] + 1
-        elif close[i] > r1[i]:
-            resistance_strength[i] = resistance_strength[i - 1] + 1
-        else:
-            support_strength[i] = max(0, support_strength[i - 1] - 1)
-            resistance_strength[i] = max(0, resistance_strength[i - 1] - 1)
+            volume_filter[i] = volume[i] > rolling_avg_volume[i]
 
-        if volume_filter[i] and volume[i] > volume_factor * rolling_avg_volume[i]:
-            if support_strength[i] >= strength_threshold and close[i] < (1 - price_factor) * s1[i]:
-                for j in range(max(0, i - persistence + 1), i + 1):
-                    strong_support[j] = min(s1[j], s2[j])
-            if resistance_strength[i] >= strength_threshold and close[i] > (1 + price_factor) * r1[i]:
-                for j in range(max(0, i - persistence + 1), i + 1):
-                    strong_resistance[j] = max(r1[j], r2[j])
+            if close[i] < s1[i]:
+                support_strength[i] = support_strength[i - 1] + 1
+            elif close[i] > r1[i]:
+                resistance_strength[i] = resistance_strength[i - 1] + 1
+            else:
+                support_strength[i] = max(0, support_strength[i - 1] - 1)
+                resistance_strength[i] = max(0, resistance_strength[i - 1] - 1)
+
+            if volume_filter[i] and volume[i] > volume_factor * rolling_avg_volume[i]:
+                if support_strength[i] >= strength_threshold and close[i] < (1 - price_factor) * s1[i]:
+                    for j in range(max(0, i - persistence + 1), i + 1):
+                        strong_support[j] = min(s1[j], s2[j])
+                if resistance_strength[i] >= strength_threshold and close[i] > (1 + price_factor) * r1[i]:
+                    for j in range(max(0, i - persistence + 1), i + 1):
+                        strong_resistance[j] = max(r1[j], r2[j])
+
+            vol_sum += volume[i] - volume[i - length]
 
     return strong_support, strong_resistance
 
