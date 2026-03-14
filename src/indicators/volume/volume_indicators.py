@@ -13,10 +13,31 @@ def cci_numba(high, low, close, length=14, c=0.015):
 
     tp = (high + low + close) / 3.0
 
-    for i in range(length - 1, n):
-        window = tp[i - length + 1 : i + 1]
-        mean_tp = np.mean(window)
-        mad_tp = np.sum(np.abs(window - mean_tp)) / length
+    # FIXED: Converted slow slice mean to O(N) running sum for the mean
+    sum_tp = np.sum(tp[:length])
+    mean_tp = sum_tp / length
+
+    mad_sum = 0.0
+    for j in range(length):
+        mad_sum += abs(tp[j] - mean_tp)
+    mad_tp = mad_sum / length
+
+    if mad_tp == 0:
+        cci[length - 1] = 0.0
+    else:
+        cci[length - 1] = (tp[length - 1] - mean_tp) / (c * mad_tp)
+
+    for i in range(length, n):
+        old_val = tp[i - length]
+        new_val = tp[i]
+
+        sum_tp += new_val - old_val
+        mean_tp = sum_tp / length
+
+        mad_sum = 0.0
+        for j in range(i - length + 1, i + 1):
+            mad_sum += abs(tp[j] - mean_tp)
+        mad_tp = mad_sum / length
 
         if mad_tp == 0:
             cci[i] = 0.0

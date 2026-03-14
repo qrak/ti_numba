@@ -31,3 +31,7 @@ To verify lookahead bias, edge cases, and performance regressions:
 ## 2024-03-13 - [O(N) Optimization in Support and Resistance Indicators]
 **Learning:** `support_resistance_numba_advanced` and `advanced_support_resistance_numba` contained an O(N*K) algorithmic bottleneck by repeatedly computing `np.mean(volume[i - length:i])` on an array slice inside the main rolling window calculation loop.
 **Action:** Replaced these inner slice calculations with an O(N) running sum using a `vol_sum` variable that adds the newest incoming value and subtracts the oldest outgoing value at each step. This effectively eliminates redundant array iterations inside the rolling window loop, maximizing Numba execution speed while retaining mathematically identical output.
+
+## 2024-03-14 - [Avoid Catastrophic Cancellation in Higher Moments]
+**Learning:** [Using naive algebraic expansions for higher moments (e.g., maintaining running sums of x^2, x^3, x^4) to achieve O(N) rolling windows causes severe catastrophic cancellation and floating-point drift on real financial data, failing strict accuracy requirements.]
+**Action:** [Use hybrid O(N*K) approaches for higher moments: maintain an O(N) running sum for the mean, but compute deviations via an O(K) loop over the slice, or use Welford's algorithm to preserve accuracy.]
