@@ -119,26 +119,52 @@ def kurtosis_numba(arr, length):
     n = len(arr)
     kurtosis_values = np.full(n, np.nan)
 
-    if length < 4:
+    if length < 4 or n < length:
         return kurtosis_values
 
+    # FIXED: Converted slow slice sum to O(N) running sum
+    sum_x = np.sum(arr[:length])
+    sum_x2 = np.sum(arr[:length] ** 2)
+    sum_x3 = np.sum(arr[:length] ** 3)
+    sum_x4 = np.sum(arr[:length] ** 4)
+
     length_reciprocal = 1.0 / length
+    kurtosis_constant = (length * (length + 1)) / ((length - 1) * (length - 2) * (length - 3))
 
-    for i in range(length - 1, n):
-        window = arr[i - length + 1:i + 1]
-        mean = np.sum(window) * length_reciprocal
-        variance = np.sum((window - mean) ** 2) / (length - 1)
-        std_dev = np.sqrt(variance)
+    mean = sum_x * length_reciprocal
+    variance = (sum_x2 - sum_x * sum_x * length_reciprocal) / (length - 1)
+    std_dev = np.sqrt(max(0.0, variance))
 
-        if std_dev == 0:
-            continue
+    if std_dev > 0:
+        m2 = mean * mean
+        m3 = m2 * mean
+        m4 = m3 * mean
+        sum_diff4 = sum_x4 - 4 * mean * sum_x3 + 6 * m2 * sum_x2 - 4 * m3 * sum_x + length * m4
+        kurtosis_sum = sum_diff4 / (std_dev ** 4)
+        kurtosis = kurtosis_constant * kurtosis_sum - (3 * ((length - 1) ** 2) / ((length - 2) * (length - 3)))
+        kurtosis_values[length - 1] = kurtosis
 
-        kurtosis_sum = np.sum(((window - mean) / std_dev) ** 4)
-        kurtosis_constant = (length * (length + 1)) / ((length - 1) * (length - 2) * (length - 3))
-        kurtosis = kurtosis_constant * kurtosis_sum
-        kurtosis -= 3 * ((length - 1) ** 2) / ((length - 2) * (length - 3))
+    for i in range(length, n):
+        old_val = arr[i - length]
+        new_val = arr[i]
 
-        kurtosis_values[i] = kurtosis
+        sum_x += new_val - old_val
+        sum_x2 += new_val ** 2 - old_val ** 2
+        sum_x3 += new_val ** 3 - old_val ** 3
+        sum_x4 += new_val ** 4 - old_val ** 4
+
+        mean = sum_x * length_reciprocal
+        variance = (sum_x2 - sum_x * sum_x * length_reciprocal) / (length - 1)
+        std_dev = np.sqrt(max(0.0, variance))
+
+        if std_dev > 0:
+            m2 = mean * mean
+            m3 = m2 * mean
+            m4 = m3 * mean
+            sum_diff4 = sum_x4 - 4 * mean * sum_x3 + 6 * m2 * sum_x2 - 4 * m3 * sum_x + length * m4
+            kurtosis_sum = sum_diff4 / (std_dev ** 4)
+            kurtosis = kurtosis_constant * kurtosis_sum - (3 * ((length - 1) ** 2) / ((length - 2) * (length - 3)))
+            kurtosis_values[i] = kurtosis
 
     return kurtosis_values
 
@@ -147,19 +173,43 @@ def skew_numba(close, length=30):
     n = len(close)
     skew_values = np.full(n, np.nan)
 
-    if length < 3:
+    if length < 3 or n < length:
         return skew_values
 
-    for i in range(length - 1, n):
-        window = close[i - length + 1:i + 1]
-        mean = np.sum(window) / length
-        std_dev = np.sqrt(np.sum((window - mean) ** 2) / (length - 1))
+    # FIXED: Converted slow slice sum to O(N) running sum
+    sum_x = np.sum(close[:length])
+    sum_x2 = np.sum(close[:length] ** 2)
+    sum_x3 = np.sum(close[:length] ** 3)
 
-        if std_dev == 0:
-            continue
+    mean = sum_x / length
+    variance = (sum_x2 - (sum_x ** 2) / length) / (length - 1)
+    std_dev = np.sqrt(max(0.0, variance))
 
-        skew_sum = np.sum(((window - mean) / std_dev) ** 3)
-        skew_values[i] = (length / ((length - 1) * (length - 2))) * skew_sum
+    if std_dev > 0:
+        m2 = mean * mean
+        m3 = m2 * mean
+        sum_diff3 = sum_x3 - 3 * mean * sum_x2 + 3 * m2 * sum_x - length * m3
+        skew_sum = sum_diff3 / (std_dev ** 3)
+        skew_values[length - 1] = (length / ((length - 1) * (length - 2))) * skew_sum
+
+    for i in range(length, n):
+        old_val = close[i - length]
+        new_val = close[i]
+
+        sum_x += new_val - old_val
+        sum_x2 += new_val ** 2 - old_val ** 2
+        sum_x3 += new_val ** 3 - old_val ** 3
+
+        mean = sum_x / length
+        variance = (sum_x2 - (sum_x ** 2) / length) / (length - 1)
+        std_dev = np.sqrt(max(0.0, variance))
+
+        if std_dev > 0:
+            m2 = mean * mean
+            m3 = m2 * mean
+            sum_diff3 = sum_x3 - 3 * mean * sum_x2 + 3 * m2 * sum_x - length * m3
+            skew_sum = sum_diff3 / (std_dev ** 3)
+            skew_values[i] = (length / ((length - 1) * (length - 2))) * skew_sum
 
     return skew_values
 
@@ -173,10 +223,22 @@ def variance_numba(close, length=30, ddof=1):
     n = len(close)
     variance_values = np.full(n, np.nan)
 
-    for i in range(length - 1, n):
-        window = close[i - length + 1:i + 1]
-        mean = np.sum(window) / length
-        variance_values[i] = np.sum((window - mean) ** 2) / (length - ddof)
+    if n < length:
+        return variance_values
+
+    # FIXED: Converted slow slice sum to O(N) running sum
+    sum_x = np.sum(close[:length])
+    sum_x2 = np.sum(close[:length] ** 2)
+
+    variance = (sum_x2 - (sum_x ** 2) / length) / (length - ddof)
+    variance_values[length - 1] = max(0.0, variance)
+
+    for i in range(length, n):
+        sum_x += close[i] - close[i - length]
+        sum_x2 += close[i] ** 2 - close[i - length] ** 2
+
+        variance = (sum_x2 - (sum_x ** 2) / length) / (length - ddof)
+        variance_values[i] = max(0.0, variance)
 
     return variance_values
 
@@ -185,13 +247,29 @@ def zscore_numba(close, length=30, std=1.0):
     n = len(close)
     zscore_values = np.full(n, np.nan)
 
-    for i in range(length - 1, n):
-        window = close[i - length + 1:i + 1]
-        mean = np.sum(window) / length
-        variance = np.sum((window - mean) ** 2) / (length - 1)
-        stdev = np.sqrt(variance)
+    if n < length:
+        return zscore_values
 
-        if i >= length:
+    # FIXED: Converted slow slice sum to O(N) running sum
+    sum_x = np.sum(close[:length])
+    sum_x2 = np.sum(close[:length] ** 2)
+
+    mean = sum_x / length
+    variance = (sum_x2 - (sum_x ** 2) / length) / (length - 1)
+    stdev = np.sqrt(max(0.0, variance))
+
+    if stdev != 0:
+        zscore_values[length - 1] = (close[length - 1] - mean) / (std * stdev)
+
+    for i in range(length, n):
+        sum_x += close[i] - close[i - length]
+        sum_x2 += close[i] ** 2 - close[i - length] ** 2
+
+        mean = sum_x / length
+        variance = (sum_x2 - (sum_x ** 2) / length) / (length - 1)
+        stdev = np.sqrt(max(0.0, variance))
+
+        if stdev != 0:
             zscore_values[i] = (close[i] - mean) / (std * stdev)
 
     return zscore_values
@@ -201,10 +279,26 @@ def mad_numba(close, length=30):
     n = len(close)
     mad_values = np.full(n, np.nan)
 
-    for i in range(length - 1, n):
-        window = close[i - length + 1:i + 1]
-        mean = np.mean(window)
-        mad_values[i] = np.mean(np.abs(window - mean))
+    if n < length:
+        return mad_values
+
+    # FIXED: Converted slow slice mean to O(N) running sum for the mean
+    sum_x = np.sum(close[:length])
+    mean = sum_x / length
+
+    mad_sum = 0.0
+    for j in range(length):
+        mad_sum += abs(close[j] - mean)
+    mad_values[length - 1] = mad_sum / length
+
+    for i in range(length, n):
+        sum_x += close[i] - close[i - length]
+        mean = sum_x / length
+
+        mad_sum = 0.0
+        for j in range(i - length + 1, i + 1):
+            mad_sum += abs(close[j] - mean)
+        mad_values[i] = mad_sum / length
 
     return mad_values
 
