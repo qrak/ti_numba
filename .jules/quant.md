@@ -35,3 +35,7 @@ To verify lookahead bias, edge cases, and performance regressions:
 ## 2024-03-14 - [Avoid Catastrophic Cancellation in Higher Moments]
 **Learning:** [Using naive algebraic expansions for higher moments (e.g., maintaining running sums of x^2, x^3, x^4) to achieve O(N) rolling windows causes severe catastrophic cancellation and floating-point drift on real financial data, failing strict accuracy requirements.]
 **Action:** [Use hybrid O(N*K) approaches for higher moments: maintain an O(N) running sum for the mean, but compute deviations via an O(K) loop over the slice, or use Welford's algorithm to preserve accuracy.]
+
+## 2026-03-15 - [O(N) Optimization in MFI and Chaikin Money Flow]
+**Learning:** Found multiple instances where volume-based indicators (`mfi_numba`, `chaikin_money_flow_numba`) were calculating sums (`pmf`, `nmf`, `money_flow_volume`, `volume_sum`) on array slices inside the main execution loop over `length`, causing an O(N*K) algorithmic bottleneck.
+**Action:** Replaced these inner slice calculations with an O(N) running sum using a variable that adds the newest incoming value and subtracts the oldest outgoing value at each step. By pre-calculating the elements array (e.g., `pmf_arr`, `nmf_arr`, `mfv_arr`) first, we reduce the complexity strictly to O(N) and maximize Numba loop execution speed.
