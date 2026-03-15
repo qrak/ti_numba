@@ -51,30 +51,48 @@ def mfi_numba(high, low, close, volume, length=14, drift=1):
     n = len(high)
     mfi = np.full(n, np.nan)
 
+    if n < length:
+        return mfi
+
     tp = np.zeros(n)
     rmf = np.zeros(n)
+    pmf_arr = np.zeros(n)
+    nmf_arr = np.zeros(n)
 
     for i in range(n):
         tp[i] = (high[i] + low[i] + close[i]) / 3
         rmf[i] = tp[i] * volume[i]
 
-    for i in range(length, n):
-        pmf = 0
-        nmf = 0
+    for i in range(drift, n):
+        tp_diff = tp[i] - tp[i - drift]
+        if tp_diff > 0:
+            pmf_arr[i] = rmf[i]
+        elif tp_diff < 0:
+            nmf_arr[i] = rmf[i]
 
-        for j in range(i - length + 1, i + 1):
-            tp_diff = tp[j] - ((high[j - drift] + low[j - drift] + close[j - drift]) / 3)
-
-            if tp_diff > 0:
-                pmf += rmf[j]
-            elif tp_diff < 0:
-                nmf += rmf[j]
+    if length < n:
+        # FIXED: Converted O(N*K) slice sums to O(N) running sums
+        pmf = 0.0
+        nmf = 0.0
+        for j in range(1, length + 1):
+            pmf += pmf_arr[j]
+            nmf += nmf_arr[j]
 
         if nmf == 0:
-            mfi[i] = 100
+            mfi[length] = 100.0
         else:
             mfr = pmf / nmf
-            mfi[i] = 100 * mfr / (1 + mfr)
+            mfi[length] = 100.0 * mfr / (1.0 + mfr)
+
+        for i in range(length + 1, n):
+            pmf += pmf_arr[i] - pmf_arr[i - length]
+            nmf += nmf_arr[i] - nmf_arr[i - length]
+
+            if nmf == 0:
+                mfi[i] = 100.0
+            else:
+                mfr = pmf / nmf
+                mfi[i] = 100.0 * mfr / (1.0 + mfr)
 
     return mfi
 
@@ -113,15 +131,28 @@ def chaikin_money_flow_numba(high, low, close, volume, length):
     n = len(close)
     cmf = np.full(n, np.nan)
 
-    for i in range(length - 1, n):
-        money_flow_volume = 0
-        volume_sum = 0
+    if n < length:
+        return cmf
 
-        for j in range(i - length + 1, i + 1):
-            if high[j] != low[j]:
-                money_flow_multiplier = ((close[j] - low[j]) - (high[j] - close[j])) / (high[j] - low[j])
-                money_flow_volume += money_flow_multiplier * volume[j]
-            volume_sum += volume[j]
+    mfv_arr = np.zeros(n)
+    for i in range(n):
+        if high[i] != low[i]:
+            money_flow_multiplier = ((close[i] - low[i]) - (high[i] - close[i])) / (high[i] - low[i])
+            mfv_arr[i] = money_flow_multiplier * volume[i]
+
+    # FIXED: Converted O(N*K) slice sums to O(N) running sums
+    money_flow_volume = 0.0
+    volume_sum = 0.0
+    for j in range(length):
+        money_flow_volume += mfv_arr[j]
+        volume_sum += volume[j]
+
+    if volume_sum != 0:
+        cmf[length - 1] = money_flow_volume / volume_sum
+
+    for i in range(length, n):
+        money_flow_volume += mfv_arr[i] - mfv_arr[i - length]
+        volume_sum += volume[i] - volume[i - length]
 
         if volume_sum != 0:
             cmf[i] = money_flow_volume / volume_sum
