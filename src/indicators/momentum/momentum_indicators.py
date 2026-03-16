@@ -92,10 +92,62 @@ def stochastic_numba(high, low, close, period_k, smooth_k, period_d):
             k_values[i] = 100 * (close[i] - low_min) / (high_max - low_min)
 
     smoothed_k = np.full(n, np.nan)
-    for i in range(period_k + smooth_k - 2, n):
-        smoothed_k[i] = np.mean(k_values[i - smooth_k + 1:i + 1])
-        if i >= period_k + smooth_k + period_d - 3:
-            d_values[i] = np.mean(smoothed_k[i - period_d + 1:i + 1])
+
+    # FIXED: Converted slow slice mean to O(N) running sum for smoothed_k
+    sum_k = 0.0
+    valid_k_count = 0
+    start_smooth_k = period_k + smooth_k - 2
+
+    if n > start_smooth_k:
+        for i in range(period_k - 1, start_smooth_k):
+            val = k_values[i]
+            if not np.isnan(val):
+                sum_k += val
+                valid_k_count += 1
+
+        for i in range(start_smooth_k, n):
+            val = k_values[i]
+            if not np.isnan(val):
+                sum_k += val
+                valid_k_count += 1
+
+            if valid_k_count == smooth_k:
+                smoothed_k[i] = sum_k / smooth_k
+            else:
+                smoothed_k[i] = np.nan
+
+            old_val = k_values[i - smooth_k + 1]
+            if not np.isnan(old_val):
+                sum_k -= old_val
+                valid_k_count -= 1
+
+    # FIXED: Converted slow slice mean to O(N) running sum for d_values
+    sum_d = 0.0
+    valid_d_count = 0
+    start_d = period_k + smooth_k + period_d - 3
+
+    if n > start_d:
+        for i in range(start_smooth_k, start_d):
+            val = smoothed_k[i]
+            if not np.isnan(val):
+                sum_d += val
+                valid_d_count += 1
+
+        for i in range(start_d, n):
+            val = smoothed_k[i]
+            if not np.isnan(val):
+                sum_d += val
+                valid_d_count += 1
+
+            if valid_d_count == period_d:
+                d_values[i] = sum_d / period_d
+            else:
+                d_values[i] = np.nan
+
+            old_val = smoothed_k[i - period_d + 1]
+            if not np.isnan(old_val):
+                sum_d -= old_val
+                valid_d_count -= 1
 
     return smoothed_k, d_values
 
