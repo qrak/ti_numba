@@ -154,17 +154,22 @@ def vhf_numba(close, length=28, drift=1):
 
     vhf = np.full(n, np.nan)
 
-    for i in range(length - 1 + drift, n):
+    # FIXED: Pre-calculated absolute differences to remove redundant inner-loop math
+    diffs = np.zeros(n)
+    for i in range(drift, n):
+        diffs[i] = np.abs(close[i] - close[i - drift])
+
+    start_idx = length - 1 + drift
+
+    for i in range(start_idx, n):
         hcp = np.max(close[i - length + 1:i + 1:drift])
         lcp = np.min(close[i - length + 1:i + 1:drift])
 
-        sliced_close = close[i - length + 1:i + 1:drift]
+        # Calculate sum_diff using a direct loop for this exact window
+        sum_diff = 0.0
+        for k in range(i - length + 1 + drift, i + 1, drift):
+            sum_diff += diffs[k]
 
-        # Manually compute the differences
-        diff = np.abs(sliced_close[1:] - sliced_close[:-1])
-        sum_diff = np.sum(diff)
-
-        # Handle division by zero
         if sum_diff != 0:
             vhf[i] = np.abs(hcp - lcp) / sum_diff
         else:

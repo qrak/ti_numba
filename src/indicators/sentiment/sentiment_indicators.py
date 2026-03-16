@@ -69,9 +69,34 @@ def _mfi_window(window_high, window_low, window_close, window_volume, mfi_length
     tp = (window_high + window_low + window_close) / 3
     rmf = tp * window_volume
 
-    for i in range(mfi_length, window_size):
-        pmf = np.sum(rmf[i - mfi_length + 1:i + 1][tp[i - mfi_length + 1:i + 1] > tp[i - mfi_length:i]])
-        nmf = np.sum(rmf[i - mfi_length + 1:i + 1][tp[i - mfi_length + 1:i + 1] < tp[i - mfi_length:i]])
+    if window_size <= mfi_length:
+        return mfi_list
+
+    # FIXED: Converted O(N*K) slice sums to O(N) running sums
+    pmf_arr = np.zeros(window_size)
+    nmf_arr = np.zeros(window_size)
+
+    for i in range(1, window_size):
+        if tp[i] > tp[i - 1]:
+            pmf_arr[i] = rmf[i]
+        elif tp[i] < tp[i - 1]:
+            nmf_arr[i] = rmf[i]
+
+    pmf = 0.0
+    nmf = 0.0
+    for i in range(1, mfi_length + 1):
+        pmf += pmf_arr[i]
+        nmf += nmf_arr[i]
+
+    if nmf == 0:
+        mfi_list[mfi_length] = 100
+    else:
+        mfr = pmf / nmf
+        mfi_list[mfi_length] = 100 * mfr / (1 + mfr)
+
+    for i in range(mfi_length + 1, window_size):
+        pmf += pmf_arr[i] - pmf_arr[i - mfi_length]
+        nmf += nmf_arr[i] - nmf_arr[i - mfi_length]
 
         if nmf == 0:
             mfi_list[i] = 100
