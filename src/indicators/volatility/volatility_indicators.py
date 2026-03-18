@@ -30,8 +30,19 @@ def atr_numba(high, low, close, length=14, mamode='rma', percent=False):
     elif mamode == 'wma':
         weights = np.arange(1, length + 1).astype(np.float64)
         weight_sum = np.sum(weights)
-        for i in range(length, n):
-            atr[i] = np.dot(tr[i - length + 1:i + 1], weights) / weight_sum
+        if n > length:
+            window_sum_w = 0.0
+            window_sum = 0.0
+            for j in range(length):
+                window_sum_w += tr[1 + j] * weights[j]
+                window_sum += tr[1 + j]
+
+            atr[length] = window_sum_w / weight_sum
+
+            for i in range(length + 1, n):
+                window_sum_w += length * tr[i] - window_sum
+                window_sum += tr[i] - tr[i - length]
+                atr[i] = window_sum_w / weight_sum
     else:
         atr[length - 1] = np.mean(tr[1:length])
         for i in range(length, n):
