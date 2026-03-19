@@ -323,15 +323,30 @@ def entropy_numba(close, length=10, base=2.0):
 
     log_base = np.log(base)  # precompute log base
 
-    total = np.sum(close[:length])
+    total = 0.0
+    sum_clogc = 0.0
+
+    # FIXED: Converted O(N*K) slice sums to O(N) running sums
+    for j in range(length):
+        c = close[j]
+        total += c
+        if c > 0:
+            sum_clogc += c * np.log(c)
 
     for i in range(length, n):
-        if total != 0:
-            p = close[i - length:i] / total
-            ent = -np.sum(p * np.log(p) / log_base)
+        if total > 0:
+            ent = -( (sum_clogc / total) - np.log(total) ) / log_base
             entropy[i] = ent
 
-        total += close[i] - close[i - length]
+        old_c = close[i - length]
+        new_c = close[i]
+
+        total += new_c - old_c
+
+        if new_c > 0:
+            sum_clogc += new_c * np.log(new_c)
+        if old_c > 0:
+            sum_clogc -= old_c * np.log(old_c)
 
     return entropy
 
