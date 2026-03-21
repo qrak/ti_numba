@@ -355,23 +355,39 @@ def hurst_numba(ts: np.ndarray, max_lag: int = 20) -> np.ndarray:
     n = len(ts)
     hurst_values = np.full(n, np.nan, dtype=np.float64)
     
+    if n < max_lag + 2:
+        return hurst_values
+
+    lags = np.arange(2, max_lag)
+    num_lags = len(lags)
+
+    # FIXED: Converted O(N^2) expanding window sums to O(N) running sums
+    sum_diff_sq_arr = np.zeros(num_lags, dtype=np.float64)
+    counts = np.zeros(num_lags, dtype=np.int64)
+
+    # Calculate initial window once up to max_lag + 1
+    for j in range(num_lags):
+        lag = lags[j]
+        for idx in range(lag, max_lag + 2):
+            diff = ts[idx] - ts[idx - lag]
+            sum_diff_sq_arr[j] += diff * diff
+            counts[j] += 1
+
     # Start from index where we have enough data
     for i in range(max_lag + 2, n):
-        # Use expanding window up to current position
-        window = ts[:i+1]
-        lags = np.arange(2, max_lag)
-        tau = np.zeros(len(lags))
+        tau = np.zeros(num_lags)
 
-        # Calculate tau for each lag
-        for j, lag in enumerate(lags):
-            sum_diff_sq = 0.0
-            count = 0
-            for idx in range(lag, len(window)):
-                diff = window[idx] - window[idx - lag]
-                sum_diff_sq += diff * diff
-                count += 1
-            if count > 0:
-                tau[j] = np.sqrt(sum_diff_sq / count)
+        # Calculate tau for each lag incrementally
+        for j in range(num_lags):
+            lag = lags[j]
+
+            # Add new difference
+            diff = ts[i] - ts[i - lag]
+            sum_diff_sq_arr[j] += diff * diff
+            counts[j] += 1
+
+            if counts[j] > 0:
+                tau[j] = np.sqrt(sum_diff_sq_arr[j] / counts[j])
             else:
                 tau[j] = 0.0
 
