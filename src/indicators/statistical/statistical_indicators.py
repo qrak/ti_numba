@@ -355,48 +355,55 @@ def hurst_numba(ts: np.ndarray, max_lag: int = 20) -> np.ndarray:
     n = len(ts)
     hurst_values = np.full(n, np.nan, dtype=np.float64)
     
-    # Start from index where we have enough data
+    if n <= max_lag + 2:
+        return hurst_values
+
+    lags = np.arange(2, max_lag)
+    num_lags = len(lags)
+
+    # FIXED: Converted O(N^2) expanding window calculation to O(N) running sum
+    sum_diff_sq = np.zeros(num_lags, dtype=np.float64)
+    counts = np.zeros(num_lags, dtype=np.float64)
+
+    # Initialize running sums up to max_lag + 1
+    for j in range(num_lags):
+        lag = lags[j]
+        for idx in range(lag, max_lag + 2):
+            diff = ts[idx] - ts[idx - lag]
+            sum_diff_sq[j] += diff * diff
+            counts[j] += 1
+
     for i in range(max_lag + 2, n):
-        # Use expanding window up to current position
-        window = ts[:i+1]
-        lags = np.arange(2, max_lag)
-        tau = np.zeros(len(lags))
-
-        # Calculate tau for each lag
-        for j, lag in enumerate(lags):
-            sum_diff_sq = 0.0
-            count = 0
-            for idx in range(lag, len(window)):
-                diff = window[idx] - window[idx - lag]
-                sum_diff_sq += diff * diff
-                count += 1
-            if count > 0:
-                tau[j] = np.sqrt(sum_diff_sq / count)
-            else:
-                tau[j] = 0.0
-
-        # Filter out zero values
-        non_zero_tau = tau[tau > 0]
-        if len(non_zero_tau) < 2:
-            continue  # Skip calculation if not enough data
-
-        # Calculate slope using valid values
-        log_lags = np.log(lags[tau > 0])
-        log_tau = np.log(non_zero_tau)
+        log_lags_sum = 0.0
+        log_tau_sum = 0.0
+        log_lags_sq_sum = 0.0
+        log_lags_tau_sum = 0.0
+        n_points = 0
         
-        # Linear regression using method of moments
-        n_points = len(log_lags)
-        sum_xy = np.sum(log_lags * log_tau)
-        sum_x = np.sum(log_lags)
-        sum_y = np.sum(log_tau)
-        sum_x2 = np.sum(log_lags ** 2)
-        
-        denominator = n_points * sum_x2 - sum_x ** 2
-        if denominator == 0:
-            continue
+        for j in range(num_lags):
+            lag = lags[j]
+            diff = ts[i] - ts[i - lag]
+            sum_diff_sq[j] += diff * diff
+            counts[j] += 1
             
-        slope = (n_points * sum_xy - sum_x * sum_y) / denominator
-        hurst_values[i] = slope
+            tau = 0.0
+            if counts[j] > 0:
+                tau = np.sqrt(sum_diff_sq[j] / counts[j])
+
+            if tau > 0:
+                log_l = np.log(lag)
+                log_t = np.log(tau)
+                log_lags_sum += log_l
+                log_tau_sum += log_t
+                log_lags_sq_sum += log_l * log_l
+                log_lags_tau_sum += log_l * log_t
+                n_points += 1
+
+        if n_points >= 2:
+            denominator = n_points * log_lags_sq_sum - log_lags_sum * log_lags_sum
+            if denominator != 0:
+                slope = (n_points * log_lags_tau_sum - log_lags_sum * log_tau_sum) / denominator
+                hurst_values[i] = slope
 
     return hurst_values
 
