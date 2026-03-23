@@ -53,3 +53,7 @@ To verify lookahead bias, edge cases, and performance regressions:
 ## 2026-03-23 - [Optimized Expanding Window Calculation in Hurst Exponent]
 **Learning:** For expanding window indicators, iterating through a time series index `i` while computing a sliding/expanding window using an inner loop over $O(N)$ indices leads to disastrous $O(N^2)$ algorithmic time complexity. In `hurst_numba`, the running square deviations were being completely recomputed from the start on every loop iteration instead of merely processing the most recent update.
 **Action:** When working with expanding windows or linear regressions inside `Numba`, strictly maintain running sums or running difference squares on an outer scope, updating the accumulators iteratively for the single newest element at index `i`. This mathematically guarantees an $O(N)$ running execution time.
+
+## 2026-03-23 - [Volume Profile Max-Bin Boundary Bug]
+**Learning:** `volume_profile_numba` used a strict `<` upper-bound check for every bin, which excluded samples equal to `max(window_close)` from all bins and leaked volume out of the profile totals.
+**Action:** Keep all intermediate bins half-open `[low, high)` and make the final bin closed `[low, high]` so the right-edge maximum is always included and total binned volume is conserved.

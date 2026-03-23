@@ -229,7 +229,11 @@ def volume_profile_numba(close, volume, length, num_bins):
         volume_profile = np.zeros(num_bins)
 
         for j in range(num_bins):
-            mask = (window_close >= price_range[j]) & (window_close < price_range[j + 1])
+            # Include the right edge in the final bin so max(window_close) is not dropped.
+            if j == num_bins - 1:
+                mask = (window_close >= price_range[j]) & (window_close <= price_range[j + 1])
+            else:
+                mask = (window_close >= price_range[j]) & (window_close < price_range[j + 1])
             volume_profile[j] = np.sum(window_volume[mask])
 
         result[i] = volume_profile

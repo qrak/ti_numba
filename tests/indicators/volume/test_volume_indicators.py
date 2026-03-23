@@ -330,28 +330,22 @@ class TestVolumeProfile:
         assert (result[:length] == 0).all()
 
     def test_volume_not_lost_beyond_tolerance(self, ohlcv):
-        """Volume in bins is <= total window volume. The implementation uses strict '<'
-        for bin upper edges, so bars exactly at the window max may not fall into any bin.
-        We verify the total is within a generous tolerance of the true total.
-        """
+        """All window volume should be captured by bins."""
         length = 20
         num_bins = 10
         result = volume_profile_numba(ohlcv["close"], ohlcv["volume"], length=length, num_bins=num_bins)
         for i in range(length, ohlcv["n"]):
             expected_total = np.sum(ohlcv["volume"][i - length: i])
             actual_total = np.sum(result[i])
-            # Bins capture ≤ total; at most one bar's volume can be missed at the upper edge
-            assert actual_total <= expected_total + 1e-6, \
-                f"Bins exceeded total volume at index {i}: {actual_total} > {expected_total}"
-            # At least 90% of volume should be captured (generous lower bound)
-            assert actual_total >= 0.9 * expected_total, \
-                f"Too much volume lost at index {i}: {actual_total} vs {expected_total}"
+            np.testing.assert_allclose(
+                actual_total,
+                expected_total,
+                rtol=1e-6,
+                err_msg=f"Volume not conserved at index {i}: {actual_total} vs {expected_total}",
+            )
 
-    def test_volume_conservation_excludes_max_bar(self):
-        """The volume_profile implementation uses strict '<' for bin upper edges, so the bar whose
-        close is exactly max(window) is never captured. With uniform volume=1000 and window=10,
-        total captured == 9000 (9 bars) and 1 bar (the max) is always lost.
-        """
+    def test_volume_conservation_includes_max_bar(self):
+        """Final bin includes the window max, so total bin volume equals total window volume."""
         n = 30
         close = 50.0 + np.arange(n, dtype=np.float64) * 0.001  # strictly increasing, no ties
         volume = np.ones(n) * 1000.0
@@ -362,23 +356,21 @@ class TestVolumeProfile:
             window_vol = volume[i - length: i]
             total_vol = np.sum(window_vol)
             actual_total = np.sum(result[i])
-            # Exactly one bar (the highest-priced bar in the window) is excluded
-            max_bar_vol = window_vol[-1]  # close is monotone, so last bar has max price
-            expected = total_vol - max_bar_vol
+            expected = total_vol
             np.testing.assert_allclose(actual_total, expected, rtol=1e-6,
                                        err_msg=f"Unexpected bin total at index {i}")
 
-    def test_zero_range_prices_produce_zero_bins(self):
-        """Constant price → linspace has zero range → all bin masks fail → bins are all 0.
-        This documents a known edge case of the implementation.
-        """
+    def test_zero_range_prices_go_to_last_bin(self):
+        """Constant price is captured in the final bin due to inclusive last-edge check."""
         n = 20
         close = np.full(n, 50.0, dtype=np.float64)
         volume = np.full(n, 1000.0)
         length = 5
         result = volume_profile_numba(close, volume, length=length, num_bins=4)
-        # After warmup all bins should be 0 due to the degenerate linspace
-        assert (result[length:] == 0.0).all()
+        for i in range(length, n):
+            np.testing.assert_allclose(np.sum(result[i]), np.sum(volume[i - length:i]), rtol=1e-6)
+            assert (result[i, :3] == 0.0).all()
+            np.testing.assert_allclose(result[i, 3], np.sum(volume[i - length:i]), rtol=1e-6)
 
     def test_non_negative_bins(self, ohlcv):
         result = volume_profile_numba(ohlcv["close"], ohlcv["volume"], length=20, num_bins=10)
